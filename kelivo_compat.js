@@ -2,18 +2,45 @@
  * Kelivo URL 兼容补丁
  * Kelivo 拼接 Base URL 和 API 路径时会吃掉中间的斜杠，
  * 导致请求打到 /v1chat/completions 而非 /v1/chat/completions。
- * 用 onRequest hook 在路由匹配前重写 URL。
+ *
+ * 方案：注册别名路由，用 app.inject() 内部转发。
+ * 注意：必须在 /v1/chat/completions 路由注册之后调用。
  */
 
 function kelivoCompat(app) {
-  app.addHook("onRequest", (req, reply, done) => {
-    const url = req.raw.url || "";
-    if (url.startsWith("/v1chat/completions")) {
-      req.raw.url = url.replace("/v1chat/completions", "/v1/chat/completions");
-    } else if (url.startsWith("/v1models")) {
-      req.raw.url = url.replace("/v1models", "/v1/models");
-    }
-    done();
+  // POST /v1chat/completions -> 内部转发到 /v1/chat/completions
+  app.post("/v1chat/completions", async (req, reply) => {
+    const result = await app.inject({
+      method: "POST",
+      url: "/v1/chat/completions",
+      headers: req.headers,
+      payload: req.body
+    });
+    reply
+      .code(result.statusCode)
+      .headers(Object.fromEntries(
+        Object.entries(result.headers).filter(([k]) =>
+          !["transfer-encoding", "content-length", "connection"].includes(k.toLowerCase())
+        )
+      ))
+      .send(result.rawPayload);
+  });
+
+  // GET /v1models -> 内部转发到 /v1/models
+  app.get("/v1models", async (req, reply) => {
+    const result = await app.inject({
+      method: "GET",
+      url: "/v1/models",
+      headers: req.headers
+    });
+    reply
+      .code(result.statusCode)
+      .headers(Object.fromEntries(
+        Object.entries(result.headers).filter(([k]) =>
+          !["transfer-encoding", "content-length", "connection"].includes(k.toLowerCase())
+        )
+      ))
+      .send(result.rawPayload);
   });
 }
 
