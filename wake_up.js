@@ -11,6 +11,7 @@ const {
   resolveTimeZone,
   zonedWallTimeToDate
 } = require("./time_utils");
+const { getInjectedMemoryPrompt, runMemoryMaintenance } = require("./memory_system");
 
 const DATA_DIR = ensureDataDir();
 const TIMELINE_PATH = runtimeFile("enhanced_messages.json");
@@ -354,24 +355,34 @@ function stripPosition(messages) {
   return messages.map(({ position, ...rest }) => rest);
 }
 
-function buildWakePrompt(currentTime, diffMinutes, weatherContext = "") {
+function buildWakePrompt(currentTime, diffMinutes, weatherContext = "", memoryContext = "") {
   const promptFile = path.join(__dirname, "wake_prompt.txt");
   if (fs.existsSync(promptFile)) {
-    const template = fs.readFileSync(promptFile, "utf-8");
-    return template
+    let template = fs.readFileSync(promptFile, "utf-8");
+    template = template
       .replace(/\$\{currentTime\}/g, currentTime)
       .replace(/\$\{diffMinutes\}/g, diffMinutes)
       .replace(/\$\{weatherContext\}/g, weatherContext)
-      .replace(/\$\{weather\}/g, weatherContext);
+      .replace(/\$\{weather\}/g, weatherContext)
+      .replace(/\$\{memoryContext\}/g, memoryContext);
+    if (memoryContext && !template.includes(memoryContext)) {
+      template += "\n\n" + memoryContext;
+    }
+    return template;
   }
 
   if (process.env.WAKE_PROMPT_TEMPLATE) {
-    return process.env.WAKE_PROMPT_TEMPLATE
+    let template = process.env.WAKE_PROMPT_TEMPLATE
       .replace(/\\n/g, '\n')
       .replace(/\$\{currentTime\}/g, currentTime)
       .replace(/\$\{diffMinutes\}/g, diffMinutes)
       .replace(/\$\{weatherContext\}/g, weatherContext)
-      .replace(/\$\{weather\}/g, weatherContext);
+      .replace(/\$\{weather\}/g, weatherContext)
+      .replace(/\$\{memoryContext\}/g, memoryContext);
+    if (memoryContext && !template.includes(memoryContext)) {
+      template += "\n\n" + memoryContext;
+    }
+    return template;
   }
 
   return `
@@ -384,6 +395,7 @@ function buildWakePrompt(currentTime, diffMinutes, weatherContext = "") {
 - 当前时间：${currentTime}
 - 距离用户最后一条消息：${diffMinutes} 分钟
 ${weatherContext ? `\n${weatherContext}\n` : ""}
+${memoryContext ? `\n${memoryContext}\n` : ""}
 
 ## 输出格式
 - 如果想联系用户，直接写你想说的话。系统会自动打包成手机推送发送。可以是一句话，也可以第一行作为标题、第二行作为正文。
@@ -396,6 +408,13 @@ async function runWakeUp() {
   console.log("\n==========================");
   console.log("开始自动唤醒");
   console.log("==========================\n");
+
+  // 每次唤醒检查时顺便做记忆维护（生成日/周摘要）
+  try {
+    await runMemoryMaintenance();
+  } catch (err) {
+    console.error("[Memory] 记忆维护失败（不影响唤醒）:", err.message);
+  }
 
   const messages = loadTimelineMessages();
   if (!messages) return;
@@ -415,7 +434,8 @@ async function runWakeUp() {
   }
 
   const weatherContext = await fetchWeatherContext();
-  const wakePrompt = buildWakePrompt(getChinaTimeString(), diffMinutes, weatherContext);
+  const memoryContext = getInjectedMemoryPrompt();
+  const wakePrompt = buildWakePrompt(getChinaTimeString(), diffMinutes, weatherContext, memoryContext);
   const cleanMessages = stripPosition(messages);
 
   const historyText = cleanMessages
