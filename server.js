@@ -18,6 +18,7 @@ const {
   zonedWallTimeToDate
 } = require("./time_utils");
 const { kelivoCompat } = require("./kelivo_compat");
+const { getInjectedMemoryPrompt, extractMemoryAsync } = require("./memory_system");
 
 const DEFAULT_BODY_LIMIT_MB = 50;
 
@@ -411,6 +412,7 @@ const PREFERRED_ENV_ORDER = [
   "TARGET_API_KEY",
   "GATEWAY_API_KEY",
   "MODEL_NAME",
+  "MEMORY_MODEL_NAME",
   "BARK_KEY",
   "CUSTOM_ICON_URL",
   "ALLOW_PUBLIC_API",
@@ -600,6 +602,22 @@ app.post("/v1/chat/completions", async (req, reply) => {
       if (!inserted) llmMessages.push(event);
     }
 
+    // ===== 记忆注入层 =====
+    const memoryContext = getInjectedMemoryPrompt();
+    if (memoryContext) {
+      const systemMsgIndex = llmMessages.findIndex(m => m.role === "system");
+      if (systemMsgIndex !== -1) {
+        llmMessages[systemMsgIndex] = {
+          ...llmMessages[systemMsgIndex],
+          content: normalizeContentToText(llmMessages[systemMsgIndex].content) + memoryContext
+        };
+      } else {
+        llmMessages.unshift({ role: "system", content: memoryContext });
+      }
+      console.log("[Memory] 已注入记忆上下文");
+    }
+    // ===== 记忆注入层结束 =====
+
     console.log(JSON.stringify({
       event: "llm_forward_summary",
       messages: summarizeMessagesForLog(llmMessages)
@@ -684,6 +702,23 @@ app.post("/v1/chat/completions", async (req, reply) => {
 
     if (!shouldStreamResponse) {
       const responseText = await response.text();
+
+      // ===== 记忆提取层（非流式） =====
+      try {
+        const parsed = JSON.parse(responseText);
+        const assistantReply = parsed.choices?.[0]?.message?.content || "";
+        const lastUserMsg = kelivoMessages.filter(m => m.role === "user").slice(-1)[0];
+        const lastUserText = lastUserMsg ? normalizeContentToText(lastUserMsg.content) : "";
+        if (assistantReply && lastUserText) {
+          setImmediate(() => {
+            extractMemoryAsync(lastUserText, assistantReply).catch(err => {
+              console.error("[Memory] 异步提取失败:", err.message);
+            });
+          });
+        }
+      } catch {}
+      // ===== 记忆提取层结束 =====
+
       return reply
         .code(response.status)
         .header("Content-Type", upstreamContentType || "application/json")
@@ -831,47 +866,6 @@ app.get("/admin", { preHandler: basicAuth }, async (req, reply) => {
     ? `在线（上次心跳: ${formatDateTimeInTimeZone(new Date(wakeUpLastHeartbeat), TIME_ZONE)}）`
     : "离线或未启动";
 
-  const currentUrl = readEnvValue("TARGET_API_URL");
-  const currentModel = readEnvValue("MODEL_NAME");
-  const currentIcon = readEnvValue("CUSTOM_ICON_URL");
-  const gatewayKeyStatus = readEnvValue("GATEWAY_API_KEY") ? "已配置" : "未配置";
-  const wakeConfig = {
-    dayWakeAfter: readEnvValueOrDefault("DAY_WAKE_AFTER_MINUTES", "60"),
-    nightWakeAfter: readEnvValueOrDefault("NIGHT_WAKE_AFTER_MINUTES", "120"),
-    dayCheckInterval: readEnvValueOrDefault("DAY_CHECK_INTERVAL_MINUTES", "10"),
-    nightCheckInterval: readEnvValueOrDefault("NIGHT_CHECK_INTERVAL_MINUTES", "120"),
-    dayStartHour: readEnvValueOrDefault("WAKE_DAY_START_HOUR", "10"),
-    dayEndHour: readEnvValueOrDefault("WAKE_DAY_END_HOUR", "24")
-  };
-  const weatherConfig = {
-    enabled: readEnvValueOrDefault("WEATHER_ENABLED", "false"),
-    locationName: readEnvValue("WEATHER_LOCATION_NAME"),
-    lat: readEnvValue("WEATHER_LAT"),
-    lon: readEnvValue("WEATHER_LON"),
-    units: readEnvValueOrDefault("WEATHER_UNITS", "metric")
-  };
-  const diaryEntries = readDiaryEntries(20);
-  const diaryHtml = diaryEntries.length
-    ? diaryEntries.map(entry => `
-      <details class="diary-entry">
-        <summary>
-          <span>${escapeHtml(entry.name)}</span>
-          <em>${escapeHtml(formatDateTimeInTimeZone(new Date(entry.updated_at), TIME_ZONE))}</em>
-        </summary>
-        <pre>${escapeHtml(entry.content)}</pre>
-      </details>
-    `).join("")
-    : `<div class="diary-empty">还没有日记。模型在 wake-up 回复里输出 [DIARY]...[/DIARY] 后会保存到这里。</div>`;
-
-  const authToken = Buffer.from(`${process.env.ADMIN_USER}:${process.env.ADMIN_PASSWORD}`).toString("base64");
-  const runtimeConfigNotice = IS_RAILWAY_RUNTIME
-    ? `<div class="hint">Railway 检测到：此页面保存的是当前容器的 .env。Railway Variables 会优先提供运行时配置。</div>`
-    : "";
-
-  const presets = loadPresets();
-  const presetsJson = safeJsonForInlineScript(presets);
-  const authHeaderJson = safeJsonForInlineScript(`Basic ${authToken}`);
-
   const html = `<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><title>HEARTBEAT</title></head><body><h2>HEARTBEAT Runtime</h2><p>Gateway 运行中 (${serverUptime}秒) | Wake-up: ${escapeHtml(wakeUpStatus)}</p><p><a href="/admin">刷新</a></p></body></html>`;
 
   reply.type("text/html").send(html);
@@ -978,18 +972,44 @@ app.post("/admin/restart", { preHandler: basicAuth }, async (req, reply) => {
 });
 
 // ========================
-// 测试 Bark
+// 测试 Bark（真正发送推送）
 // ========================
 app.get("/test-bark", { preHandler: basicAuth }, async (req, reply) => {
-  const formattedTime = formatDateTimeInTimeZone(new Date(), TIME_ZONE);
-  appendSpecialEvent(`（${formattedTime} 刚刚给用户发了 Bark：这是一条测试推送。）`);
-  reply.send({ success: true });
+  const barkKey = process.env.BARK_KEY;
+  if (!barkKey) return reply.code(400).send({ error: "BARK_KEY 未配置" });
+
+  const title = encodeURIComponent("Bark 测试");
+  const body = encodeURIComponent("如果你收到这条，说明推送通道正常。");
+  const barkUrl = `https://api.day.app/${barkKey}/${title}/${body}`;
+
+  try {
+    const response = await fetch(barkUrl, { method: "GET", signal: AbortSignal.timeout(10000) });
+    const result = await response.text();
+    const formattedTime = formatDateTimeInTimeZone(new Date(), TIME_ZONE);
+    appendSpecialEvent(`（${formattedTime} 刚刚给用户发了 Bark 测试推送。）`);
+    reply.send({ success: response.ok, result });
+  } catch (err) {
+    reply.code(500).send({ error: err.message });
+  }
 });
 
 app.get("/admin/test-bark", { preHandler: basicAuth }, async (req, reply) => {
-  const formattedTime = formatDateTimeInTimeZone(new Date(), TIME_ZONE);
-  appendSpecialEvent(`（${formattedTime} 刚刚给用户发了 Bark：这是一条测试推送。）`);
-  reply.send({ success: true });
+  const barkKey = process.env.BARK_KEY;
+  if (!barkKey) return reply.code(400).send({ error: "BARK_KEY 未配置" });
+
+  const title = encodeURIComponent("Bark 测试");
+  const body = encodeURIComponent("如果你收到这条，说明推送通道正常。");
+  const barkUrl = `https://api.day.app/${barkKey}/${title}/${body}`;
+
+  try {
+    const response = await fetch(barkUrl, { method: "GET", signal: AbortSignal.timeout(10000) });
+    const result = await response.text();
+    const formattedTime = formatDateTimeInTimeZone(new Date(), TIME_ZONE);
+    appendSpecialEvent(`（${formattedTime} 刚刚给用户发了 Bark 测试推送。）`);
+    reply.send({ success: response.ok, result });
+  } catch (err) {
+    reply.code(500).send({ error: err.message });
+  }
 });
 
 // ========================
