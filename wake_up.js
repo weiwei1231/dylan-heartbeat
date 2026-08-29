@@ -26,6 +26,9 @@ const DIARY_DIR_PATH = runtimeDirectory(DIARY_DIR_NAME, "diary");
 const PUSH_TIMEOUT_MS = readPositiveTimeout("PUSH_TIMEOUT_MS", 15_000);
 const WAKE_UPSTREAM_TIMEOUT_MS = readPositiveTimeout("WAKE_UPSTREAM_TIMEOUT_MS", 300_000);
 
+// Fallback: 服务启动时间，用于时间线为空时作为"最后活跃时间"
+const SERVICE_START_TIME = new Date();
+
 function readPositiveTimeout(key, fallback) {
   const value = Number(process.env[key]);
   return Number.isFinite(value) && value >= 1000 ? Math.floor(value) : fallback;
@@ -93,28 +96,19 @@ async function sendPushNotification({ title, body }) {
     if (!topic) return { ok: false, providerLabel: "ntfy", reason: "NTFY_TOPIC 未配置" };
 
     const server = (process.env.NTFY_SERVER_URL || "https://ntfy.sh").replace(/\/+$/, "");
-    const headers = {
-      "Content-Type": "application/json"
-    };
+    const headers = { "Content-Type": "application/json" };
     if (process.env.NTFY_TOKEN) headers.Authorization = `Bearer ${process.env.NTFY_TOKEN}`;
     const payload = buildNtfyPayload({
-      topic,
-      title,
-      message: body,
-      priority: process.env.NTFY_PRIORITY,
-      tags: process.env.NTFY_TAGS
+      topic, title, message: body,
+      priority: process.env.NTFY_PRIORITY, tags: process.env.NTFY_TAGS
     });
 
     const response = await fetch(server, {
-      method: "POST",
-      signal: AbortSignal.timeout(PUSH_TIMEOUT_MS),
-      headers,
-      body: JSON.stringify(payload)
+      method: "POST", signal: AbortSignal.timeout(PUSH_TIMEOUT_MS),
+      headers, body: JSON.stringify(payload)
     });
     const responseText = await response.text();
-    if (!response.ok) {
-      return { ok: false, providerLabel: "ntfy", reason: responseText || `HTTP ${response.status}` };
-    }
+    if (!response.ok) return { ok: false, providerLabel: "ntfy", reason: responseText || `HTTP ${response.status}` };
     return { ok: true, providerLabel: "ntfy" };
   }
 
@@ -126,7 +120,6 @@ async function sendPushNotification({ title, body }) {
     return { ok: false, providerLabel: "Bark", reason: "Bark Key 未配置" };
   }
 
-  // 使用 GET URL 方式发送 Bark 推送（比 JSON POST 更可靠）
   const barkKey = process.env.BARK_KEY;
   const safeTitle = encodeURIComponent(title || "来自伴侣");
   const safeBody = encodeURIComponent(body || "");
@@ -134,17 +127,12 @@ async function sendPushNotification({ title, body }) {
 
   try {
     const response = await fetch(barkUrl, {
-      method: "GET",
-      signal: AbortSignal.timeout(PUSH_TIMEOUT_MS)
+      method: "GET", signal: AbortSignal.timeout(PUSH_TIMEOUT_MS)
     });
-
     const responseText = await response.text();
     let result = {};
-    try {
-      result = JSON.parse(responseText);
-    } catch {}
+    try { result = JSON.parse(responseText); } catch {}
     console.log("\nBark Result:\n", result || responseText);
-
     if (!response.ok || (result.code && result.code !== 200)) {
       return { ok: false, providerLabel: "Bark", reason: result.message || `HTTP ${response.status}` };
     }
@@ -178,28 +166,22 @@ function getCheckIntervalMinutes(date = new Date()) {
 function normalizeContentToText(content) {
   if (typeof content === "string") return content;
   if (content == null) return "";
-
   if (Array.isArray(content)) {
-    return content
-      .map(part => {
-        if (typeof part === "string") return part;
-        if (!part || typeof part !== "object") return "";
-        const type = typeof part.type === "string" ? part.type.toLowerCase() : "";
-        if (type === "text" || type === "input_text") return part.text || part.content || "";
-        if (part.image_url || type.includes("image")) return "[图片]";
-        if (part.file || type.includes("file")) return "[文件]";
-        return "";
-      })
-      .filter(Boolean)
-      .join("\n");
+    return content.map(part => {
+      if (typeof part === "string") return part;
+      if (!part || typeof part !== "object") return "";
+      const type = typeof part.type === "string" ? part.type.toLowerCase() : "";
+      if (type === "text" || type === "input_text") return part.text || part.content || "";
+      if (part.image_url || type.includes("image")) return "[图片]";
+      if (part.file || type.includes("file")) return "[文件]";
+      return "";
+    }).filter(Boolean).join("\n");
   }
-
   if (content && typeof content === "object") {
     const type = typeof content.type === "string" ? content.type.toLowerCase() : "";
     if (content.image_url || type.includes("image")) return "[图片]";
     if (content.file || type.includes("file")) return "[文件]";
   }
-
   return "[非文本内容]";
 }
 
@@ -216,41 +198,23 @@ function summarizeWakeMessages(messages = []) {
 
 function weatherCodeText(code) {
   const table = {
-    0: "晴朗",
-    1: "大致晴朗",
-    2: "局部多云",
-    3: "阴天",
-    45: "有雾",
-    48: "雾凇",
-    51: "小毛毛雨",
-    53: "中等毛毛雨",
-    55: "较强毛毛雨",
-    61: "小雨",
-    63: "中雨",
-    65: "大雨",
-    71: "小雪",
-    73: "中雪",
-    75: "大雪",
-    80: "阵雨",
-    81: "较强阵雨",
-    82: "强阵雨",
-    95: "雷暴",
-    96: "雷暴伴小冰雹",
-    99: "雷暴伴大冰雹"
+    0: "晴朗", 1: "大致晴朗", 2: "局部多云", 3: "阴天",
+    45: "有雾", 48: "雾凇", 51: "小毛毛雨", 53: "中等毛毛雨", 55: "较强毛毛雨",
+    61: "小雨", 63: "中雨", 65: "大雨", 71: "小雪", 73: "中雪", 75: "大雪",
+    80: "阵雨", 81: "较强阵雨", 82: "强阵雨",
+    95: "雷暴", 96: "雷暴伴小冰雹", 99: "雷暴伴大冰雹"
   };
   return table[code] || `天气代码 ${code}`;
 }
 
 async function fetchWeatherContext() {
   if (!readBooleanEnv("WEATHER_ENABLED", false)) return "";
-
   const lat = Number(process.env.WEATHER_LAT);
   const lon = Number(process.env.WEATHER_LON);
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
     console.log("已启用 WEATHER_ENABLED，但 WEATHER_LAT / WEATHER_LON 未正确配置，跳过天气注入");
     return "";
   }
-
   const location = process.env.WEATHER_LOCATION_NAME || "当前位置";
   const units = (process.env.WEATHER_UNITS || "metric").trim().toLowerCase();
   const temperatureUnit = units === "fahrenheit" ? "fahrenheit" : "celsius";
@@ -296,10 +260,9 @@ async function fetchWeatherContext() {
 
 function loadTimelineMessages() {
   if (!fs.existsSync(TIMELINE_PATH)) {
-    console.log("未找到 enhanced_messages.json");
+    console.log("未找到 enhanced_messages.json，使用服务启动时间作为 fallback");
     return null;
   }
-
   try {
     const parsed = JSON.parse(fs.readFileSync(TIMELINE_PATH, "utf-8"));
     if (!Array.isArray(parsed)) {
@@ -313,10 +276,6 @@ function loadTimelineMessages() {
   }
 }
 
-function getNow() {
-  return new Date();
-}
-
 function getChinaTimeString() {
   return formatDateTimeInTimeZone(new Date(), TIME_ZONE);
 }
@@ -326,7 +285,7 @@ function getLocalTimeString() {
 }
 
 function shouldWake(lastUserTime) {
-  const now = getNow();
+  const now = new Date();
   const diffMinutes = Math.floor((now - new Date(lastUserTime)) / 1000 / 60);
   return diffMinutes >= getWakeAfterMinutes(now);
 }
@@ -340,6 +299,7 @@ function parseTimelineTimestamp(value) {
 }
 
 function getLastUserTime(messages) {
+  if (!messages || messages.length === 0) return null;
   const reversed = [...messages].reverse();
   for (const msg of reversed) {
     if (msg.role === "user") {
@@ -409,7 +369,7 @@ async function runWakeUp() {
   console.log("开始自动唤醒");
   console.log("==========================\n");
 
-  // 每次唤醒检查时顺便做记忆维护（生成日/周摘要）
+  // 每次唤醒检查时顺便做记忆维护
   try {
     await runMemoryMaintenance();
   } catch (err) {
@@ -417,49 +377,57 @@ async function runWakeUp() {
   }
 
   const messages = loadTimelineMessages();
-  if (!messages) return;
 
-  const lastUserTime = getLastUserTime(messages);
+  // 获取最后用户活跃时间，如果找不到则用服务启动时间作为 fallback
+  let lastUserTime = messages ? getLastUserTime(messages) : null;
   if (!lastUserTime) {
-    console.log("未找到用户时间");
-    return;
+    console.log("未找到用户时间戳，使用服务启动时间作为 fallback");
+    lastUserTime = SERVICE_START_TIME;
   }
 
   const now = new Date();
   const diffMinutes = Math.floor((now - lastUserTime) / 1000 / 60);
 
   if (!shouldWake(lastUserTime)) {
-    console.log("\n暂不需要唤醒\n");
+    console.log(`\n暂不需要唤醒（距上次活跃 ${diffMinutes} 分钟）\n`);
     return;
   }
 
   const weatherContext = await fetchWeatherContext();
   const memoryContext = getInjectedMemoryPrompt();
   const wakePrompt = buildWakePrompt(getChinaTimeString(), diffMinutes, weatherContext, memoryContext);
-  const cleanMessages = stripPosition(messages);
 
-  const historyText = cleanMessages
-    .filter(msg => msg.role !== "system")
-    .filter(msg => {
-      const c = normalizeContentToText(msg.content);
-      return !c.includes("<memories>") && !c.includes("记忆库使用策略");
-    })
-    .map(msg => {
-      const userDisplay = process.env.USER_DISPLAY_NAME || "用户";
-      const aiDisplay = process.env.AI_DISPLAY_NAME || "AI";
-      const role = msg.role === "user" ? userDisplay : aiDisplay;
-      let content = normalizeContentToText(msg.content);
-      if (content.includes("## Memories")) {
-        content = content.split("## Memories")[0];
-      }
-      return `[${role}] ${content}`;
-    })
-    .join("\n\n");
+  // 如果没有时间线消息，构建一个最小化的唤醒请求
+  let historyText = "";
+  let cleanSP = "";
 
-  const baseSystemPrompt = cleanMessages.find(msg => msg.role === "system");
-  const cleanSP = baseSystemPrompt 
-    ? normalizeContentToText(baseSystemPrompt.content).split("## Memories")[0].trim()
-    : "";
+  if (messages && messages.length > 0) {
+    const cleanMessages = stripPosition(messages);
+    historyText = cleanMessages
+      .filter(msg => msg.role !== "system")
+      .filter(msg => {
+        const c = normalizeContentToText(msg.content);
+        return !c.includes("<memories>") && !c.includes("记忆库使用策略");
+      })
+      .map(msg => {
+        const userDisplay = process.env.USER_DISPLAY_NAME || "用户";
+        const aiDisplay = process.env.AI_DISPLAY_NAME || "AI";
+        const role = msg.role === "user" ? userDisplay : aiDisplay;
+        let content = normalizeContentToText(msg.content);
+        if (content.includes("## Memories")) {
+          content = content.split("## Memories")[0];
+        }
+        return `[${role}] ${content}`;
+      })
+      .join("\n\n");
+
+    const baseSystemPrompt = cleanMessages.find(msg => msg.role === "system");
+    cleanSP = baseSystemPrompt
+      ? normalizeContentToText(baseSystemPrompt.content).split("## Memories")[0].trim()
+      : "";
+  } else {
+    historyText = "（暂无聊天记录，这是服务重启后的首次唤醒检查）";
+  }
 
   const wakeMessages = [
     {
@@ -581,7 +549,7 @@ ${historyText}`
 
       const pushResult = await sendPushNotification({ title: safeTitle, body: safeBody });
       if (!pushResult.ok) {
-        console.log(`\n${pushResult.providerLabel} 推送失败，本次不发送推送\n`);
+        console.log(`\n${pushResult.providerLabel} 推送失败\n`);
         eventContent = `（${getLocalTimeString()} 自动唤醒：本次未发送推送｜原因：${pushResult.providerLabel} 推送失败：${pushResult.reason}）`;
       } else {
         eventContent = `（${getLocalTimeString()} 刚刚给用户发了${pushResult.providerLabel}推送：${safeTitle}｜${safeBody}）`;
