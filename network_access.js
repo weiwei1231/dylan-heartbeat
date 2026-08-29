@@ -22,7 +22,7 @@ function decideRequestAccess({
   headerKey
 }) {
   const requestPath = String(path || "").split("?")[0];
-  if (requestPath.startsWith("/admin") || requestPath === "/healthz" || requestPath === "/test-bark") return { allow: true };
+  if (requestPath.startsWith("/admin") || requestPath === "/healthz" || requestPath === "/test-bark" || requestPath === "/chat" || requestPath === "/") return { allow: true };
 
   if (requestPath.startsWith("/internal/")) {
     return isLoopbackIp(ip) ? { allow: true } : { allow: false, status: 403, error: "Forbidden" };
