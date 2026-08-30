@@ -4,98 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>kei</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html{height:100%}
-body{background:linear-gradient(135deg,#e8f5e9 0%,#fce4ec 100%);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;height:100%;display:flex;justify-content:center;align-items:center;color:#333;overflow:hidden;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0}
-.app-container{width:100%;max-width:420px;height:100%;background:rgba(255,255,255,0.4);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);display:flex;flex-direction:column;position:relative;box-shadow:0 8px 32px rgba(0,0,0,0.05);border:1px solid rgba(255,255,255,0.6)}
-.view{display:none;width:100%;height:100%;flex-direction:column}.view.active{display:flex}
-#lock-view{justify-content:center;align-items:center;padding:24px}
-.lock-card{width:100%;background:rgba(255,255,255,0.7);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-radius:20px;padding:32px 24px;display:flex;flex-direction:column;align-items:center;gap:20px;box-shadow:0 10px 25px rgba(0,0,0,0.03);border:1px solid rgba(255,255,255,0.8)}
-.lock-title{font-size:32px;font-weight:700;color:#f06292;letter-spacing:2px}
-.lock-input{width:100%;background:rgba(255,255,255,0.9);border:1px solid rgba(240,98,146,0.3);border-radius:12px;padding:12px 16px;font-size:15px;outline:none;color:#333;text-align:center}
-.lock-input:focus{border-color:#f06292}
-.lock-btn{width:100%;background:#f06292;color:#fff;border:none;border-radius:12px;padding:12px 0;font-size:16px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(240,98,146,0.3)}
-.lock-btn:active{opacity:0.9}
-#main-view{}
-.content-area{flex:1;position:relative;overflow:hidden}
-.tab-content{display:none!important;width:100%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.tab-content.active{display:flex!important;flex-direction:column}
-.glass-card{background:rgba(255,255,255,0.7);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-radius:18px;padding:16px;border:1px solid rgba(255,255,255,0.8);box-shadow:0 4px 15px rgba(0,0,0,0.02)}
-#tab-home{padding:16px;gap:16px}
-.home-header{display:flex;justify-content:space-between;align-items:center;padding:0 4px}
-.home-header h2{font-size:22px;color:#333}
-.settings-icon{font-size:20px;cursor:pointer;opacity:0.7}
-.together-card{display:flex;flex-direction:column;align-items:center;gap:12px}
-.together-profiles{display:flex;align-items:center;justify-content:space-between;width:100%;padding:0 10px}
-.profile-item{display:flex;flex-direction:column;align-items:center;gap:6px}
-.avatar-circle{width:52px;height:52px;border-radius:50%;background:#e8f5e9;color:#4caf50;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:18px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.05)}
-.avatar-circle.pink{background:#fce4ec;color:#f06292}
-.status-text{font-size:12px;color:#666;display:flex;align-items:center;gap:4px}
-.dot{width:6px;height:6px;border-radius:50%;background-color:#4caf50}
-.days-center{text-align:center}
-.days-num{font-size:32px;font-weight:800;color:#f06292;line-height:1}
-.days-label{font-size:12px;color:#888;margin-top:4px}
-.start-date{font-size:11px;color:#999;border-top:1px dashed rgba(0,0,0,0.08);width:100%;text-align:center;padding-top:8px}
-.card-title{font-size:13px;color:#888;margin-bottom:8px}
-.mood-val{font-size:20px;font-weight:700;color:#333;margin-bottom:4px}
-.mood-desc{font-size:12px;color:#666}
-.note-content{font-size:14px;color:#444;line-height:1.5;background:rgba(255,255,255,0.5);padding:10px 12px;border-radius:10px;margin-bottom:8px}
-.note-footer{font-size:11px;color:#aaa;text-align:right}
-.chat-header{height:48px;background:rgba(255,255,255,0.5);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,0.6);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#333;flex-shrink:0}
-.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch}
-.msg-row{display:flex;flex-direction:column;max-width:82%}
-.msg-row.user{align-self:flex-end;align-items:flex-end}
-.msg-row.ai{align-self:flex-start;align-items:flex-start}
-.ai-msg-wrapper{display:flex;gap:8px;align-items:flex-start}
-.chat-avatar{width:36px;height:36px;border-radius:50%;background:#e8f5e9;color:#4caf50;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;border:1px solid #fff}
-.msg-bubble{padding:10px 14px;font-size:14px;line-height:1.5;word-break:break-word;white-space:pre-wrap;box-shadow:0 2px 8px rgba(0,0,0,0.02)}
-.msg-row.user .msg-bubble{background-color:#f8bbd0;color:#4a148c;border-radius:16px;border-bottom-right-radius:4px}
-.msg-row.ai .msg-bubble{background:rgba(255,255,255,0.85);color:#333;border-radius:16px;border-bottom-left-radius:4px;border:1px solid rgba(255,255,255,0.9)}
-.msg-time{font-size:10px;color:#999;margin-top:4px}
-.chat-input-area{padding:8px 12px;background:rgba(255,255,255,0.6);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,0.6);display:flex;align-items:flex-end;gap:8px;flex-shrink:0}
-.chat-textarea{flex:1;background:rgba(255,255,255,0.9);border:1px solid rgba(0,0,0,0.05);border-radius:18px;padding:8px 14px;color:#333;font-size:14px;line-height:20px;max-height:120px;resize:none;outline:none;font-family:inherit}
-.chat-textarea:focus{border-color:#f06292}
-.chat-send-btn{width:36px;height:36px;border-radius:50%;background:#f06292;border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;margin-bottom:1px;box-shadow:0 2px 6px rgba(240,98,146,0.3)}
-.chat-send-btn:disabled{background:#ccc;box-shadow:none;cursor:not-allowed}
-.placeholder-view{justify-content:center;align-items:center;color:#888;font-size:14px}
-.error-msg{align-self:center;color:#e53935;font-size:12px;margin:8px 0;text-align:center}
-.tab-bar{height:56px;min-height:56px;background:rgba(255,255,255,0.7);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);border-top:1px solid rgba(255,255,255,0.8);display:flex;position:relative;flex-shrink:0}
-.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;color:#888;cursor:pointer;gap:2px}
-.tab-item.active{color:#f06292;font-weight:600}
-.tab-icon{font-size:18px}
-.tab-item.chat-tab{position:relative}
-.tab-item.chat-tab .chat-circle-btn{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#f48fb1,#f06292);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;position:absolute;top:-16px;box-shadow:0 4px 10px rgba(240,98,146,0.4);border:3px solid rgba(255,255,255,0.9)}
-.tab-item.chat-tab.active .chat-circle-btn{transform:scale(1.05)}
-.settings-header{font-size:20px;font-weight:bold;margin-bottom:16px}
-.settings-container{display:flex;flex-direction:column;gap:16px;padding-bottom:20px}
-.settings-group{display:flex;flex-direction:column;gap:12px}
-.setting-item{padding:0;overflow:hidden;cursor:pointer;user-select:none}
-.setting-item-main{display:flex;align-items:center;padding:12px;min-height:44px}
-.setting-icon{width:44px;height:44px;border-radius:12px;background:rgba(0,0,0,0.04);display:flex;align-items:center;justify-content:center;font-size:20px;margin-right:12px;flex-shrink:0}
-.setting-info{flex:1}
-.setting-title{font-size:14px;font-weight:bold}
-.setting-subtitle{font-size:12px;color:#888;margin-top:2px}
-.setting-arrow{font-size:18px;color:#aaa;padding:0 4px}
-.setting-panel{display:none;background:rgba(0,0,0,0.02);padding:12px;border-top:1px solid rgba(0,0,0,0.05)}
-.setting-panel.active{display:block}
-.kc-input{width:100%;box-sizing:border-box;padding:10px 12px;border-radius:12px;border:1px solid rgba(0,0,0,0.1);background:#fff;font-size:14px;margin-bottom:8px;outline:none}
-.kc-input:focus{border-color:#f06292}
-.kc-btn-sm{min-height:44px;padding:0 16px;border-radius:12px;background:#f06292;color:#fff;border:none;font-weight:bold;cursor:pointer;font-size:14px;width:100%}
-.kc-btn-sm.btn-danger{background:#ff4d4f}
-.setting-tips{display:none;font-size:12px;margin-top:8px;text-align:center}
-.setting-tips.success{color:#52c41a}
-.setting-tips.error{color:#ff4d4f}
-.theme-options{display:flex;gap:16px;justify-content:center;padding:8px 0}
-.theme-btn{width:44px;height:44px;border-radius:50%;cursor:pointer;border:3px solid transparent}
-.theme-btn.active{border-color:#f06292}
-.theme-default{background:linear-gradient(135deg,#e8f5e9 0%,#fce4ec 100%)}
-.theme-lavender{background:linear-gradient(135deg,#e8e0f0 0%,#f3e5f5 100%)}
-.theme-warm{background:linear-gradient(135deg,#fff3e0 0%,#fce4ec 100%)}
-.about-info{font-size:13px;color:#444;line-height:1.8}
-.about-footer{font-size:12px;color:#aaa;margin-top:8px}
-#tab-settings{padding:16px;gap:16px}
-</style>
+<link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <div class="app-container">
@@ -112,9 +21,9 @@ body{background:linear-gradient(135deg,#e8f5e9 0%,#fce4ec 100%);font-family:-app
 <div class="home-header"><h2>小窝</h2><div class="settings-icon" id="home-settings-btn">⚙️</div></div>
 <div class="glass-card together-card">
 <div class="together-profiles">
-<div class="profile-item"><div class="avatar-circle">微</div><div class="status-text"><span class="dot"></span>等你回家</div></div>
+<div class="profile-item"><div class="avatar-circle" id="avatar-vv">微</div><div class="status-text"><span class="dot"></span>等你回家</div></div>
 <div class="days-center"><div class="days-num" id="together-days">0</div><div class="days-label">DAYS TOGETHER</div></div>
-<div class="profile-item"><div class="avatar-circle pink">克</div><div class="status-text"><span class="dot"></span>在线</div></div>
+<div class="profile-item"><div class="avatar-circle pink" id="avatar-kei">克</div><div class="status-text"><span class="dot"></span>在线</div></div>
 </div>
 <div class="start-date">起始于 2026-08-26</div>
 </div>
@@ -166,77 +75,6 @@ body{background:linear-gradient(135deg,#e8f5e9 0%,#fce4ec 100%);font-family:-app
 </div>
 </div>
 </div>
-<script>
-var STORAGE_KEY='kc_key',STORAGE_HISTORY='kc_history',START_DATE_STR='2026-08-26';
-var historyList=[],isGenerating=false;
-var lockView=document.getElementById('lock-view'),mainView=document.getElementById('main-view');
-var keyInput=document.getElementById('key-input'),lockBtn=document.getElementById('lock-btn');
-var togetherDaysEl=document.getElementById('together-days');
-var homeSettingsBtn=document.getElementById('home-settings-btn');
-var tabItems=document.querySelectorAll('.tab-item'),tabContents=document.querySelectorAll('.tab-content');
-var messagesContainer=document.getElementById('chat-messages');
-var textarea=document.getElementById('chat-textarea'),sendBtn=document.getElementById('chat-send-btn');
-
-function init(){calcTogetherDays();var savedKey=localStorage.getItem(STORAGE_KEY);if(savedKey){showMainView();}else{showLockView();}
-lockBtn.addEventListener('click',handleLogin);keyInput.addEventListener('keydown',function(e){if(e.key==='Enter')handleLogin();});
-homeSettingsBtn.addEventListener('click',function(){switchTab('settings');});
-tabItems.forEach(function(item){item.addEventListener('click',function(){switchTab(item.dataset.tab);});});
-textarea.addEventListener('input',autoResizeTextarea);
-textarea.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();if(!isGenerating&&textarea.value.trim())sendMessage();}});
-sendBtn.addEventListener('click',function(){if(!isGenerating&&textarea.value.trim())sendMessage();});
-initTheme();}
-
-function calcTogetherDays(){var start=new Date(START_DATE_STR),now=new Date();var d=Math.floor(Math.abs(now-start)/(1000*60*60*24));togetherDaysEl.textContent=d;var ad=document.getElementById('about-days');if(ad)ad.textContent=d;}
-function switchTab(tabName){tabItems.forEach(function(i){i.classList.toggle('active',i.dataset.tab===tabName);});tabContents.forEach(function(c){c.classList.remove('active');});var target=document.getElementById('tab-'+tabName);if(target)target.classList.add('active');if(tabName==='chat')scrollToBottom();}
-function showLockView(){lockView.classList.add('active');mainView.classList.remove('active');keyInput.value='';}
-function showMainView(){lockView.classList.remove('active');mainView.classList.add('active');loadHistory();}
-function handleLogin(){var val=keyInput.value.trim();if(val){localStorage.setItem(STORAGE_KEY,val);showMainView();}}
-function autoResizeTextarea(){textarea.style.height='auto';textarea.style.height=Math.min(textarea.scrollHeight,120)+'px';sendBtn.disabled=!textarea.value.trim()||isGenerating;}
-function getTimeString(){return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false});}
-function saveHistory(){if(historyList.length>60)historyList=historyList.slice(-60);localStorage.setItem(STORAGE_HISTORY,JSON.stringify(historyList));}
-function loadHistory(){messagesContainer.innerHTML='';var saved=localStorage.getItem(STORAGE_HISTORY);if(saved){try{historyList=JSON.parse(saved);historyList.forEach(function(msg){renderMessageUI(msg.role,msg.content,msg.time||getTimeString());});scrollToBottom();}catch(e){historyList=[];}}}
-
-function renderMessageUI(role,text,time){var row=document.createElement('div');row.className='msg-row '+role;
-if(role==='ai'){row.innerHTML='<div class="ai-msg-wrapper"><div class="chat-avatar">克</div><div><div class="msg-bubble"></div><div class="msg-time">'+time+'</div></div></div>';}
-else{row.innerHTML='<div class="msg-bubble"></div><div class="msg-time">'+time+'</div>';}
-var bubbleEl=row.querySelector('.msg-bubble');bubbleEl.textContent=text;messagesContainer.appendChild(row);scrollToBottom();return bubbleEl;}
-
-function renderError(text){var d=document.createElement('div');d.className='error-msg';d.textContent=text;messagesContainer.appendChild(d);scrollToBottom();}
-function scrollToBottom(){messagesContainer.scrollTop=messagesContainer.scrollHeight;}
-
-async function sendMessage(){var text=textarea.value.trim();if(!text||isGenerating)return;var time=getTimeString();
-renderMessageUI('user',text,time);historyList.push({role:'user',content:text,time:time});saveHistory();
-textarea.value='';autoResizeTextarea();isGenerating=true;sendBtn.disabled=true;
-var aiTime=getTimeString();var aiBubble=renderMessageUI('ai','',aiTime);
-var apiKey=localStorage.getItem(STORAGE_KEY);
-var apiMessages=historyList.map(function(item){return{role:item.role==='ai'?'assistant':'user',content:item.content};});
-try{var response=await fetch('/v1/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+apiKey,'Content-Type':'application/json'},body:JSON.stringify({model:'kei',messages:apiMessages,stream:true})});
-if(response.status===401){localStorage.removeItem(STORAGE_KEY);renderError('密钥已失效，请刷新重新登录');showLockView();return;}
-if(!response.ok){var errText=await response.text();throw new Error(errText||('HTTP '+response.status));}
-var reader=response.body.getReader(),decoder=new TextDecoder(),fullContent='',buffer='';
-while(true){var result=await reader.read();if(result.done)break;buffer+=decoder.decode(result.value,{stream:true});var lines=buffer.split('\n');buffer=lines.pop()||'';
-for(var i=0;i<lines.length;i++){var line=lines[i].trim();if(line.startsWith('data: ')){var dataStr=line.slice(6).trim();if(dataStr==='[DONE]')break;
-try{var parsed=JSON.parse(dataStr);var delta=parsed.choices&&parsed.choices[0]&&parsed.choices[0].delta&&parsed.choices[0].delta.content||'';if(delta){fullContent+=delta;aiBubble.textContent=fullContent;scrollToBottom();}}catch(e){}}}}
-if(fullContent){historyList.push({role:'ai',content:fullContent,time:aiTime});saveHistory();}}
-catch(err){renderError(err.message||'网络连接错误');}
-finally{isGenerating=false;sendBtn.disabled=!textarea.value.trim();}}
-
-function toggleSettingPanel(el){var panel=el.querySelector('.setting-panel');var wasOpen=panel.classList.contains('active');document.querySelectorAll('.setting-panel').forEach(function(p){p.classList.remove('active');});if(!wasOpen){panel.classList.add('active');if(el.querySelector('#cfg-target-url'))checkAdminAuth();refreshSettingsData();}}
-function refreshSettingsData(){try{var h=JSON.parse(localStorage.getItem(STORAGE_HISTORY)||'[]');document.getElementById('chat-history-count').textContent=h.length;}catch(e){document.getElementById('chat-history-count').textContent='0';}
-var k=localStorage.getItem(STORAGE_KEY)||'';document.getElementById('gateway-key-preview').textContent=k?k.substring(0,4)+'****':'未设置';
-var start=new Date(START_DATE_STR),now=new Date();document.getElementById('about-days').textContent=Math.floor(Math.abs(now-start)/(1000*60*60*24));}
-function checkAdminAuth(){var u=localStorage.getItem('kc_admin_user'),p=localStorage.getItem('kc_admin_pass');document.getElementById('admin-auth-panel').style.display=(!u||!p)?'block':'none';}
-function saveAdminAuth(){var u=document.getElementById('cfg-admin-user').value.trim(),p=document.getElementById('cfg-admin-pass').value.trim();if(u&&p){localStorage.setItem('kc_admin_user',u);localStorage.setItem('kc_admin_pass',p);document.getElementById('admin-auth-panel').style.display='none';}}
-function getAuthHeader(){var u=localStorage.getItem('kc_admin_user')||'',p=localStorage.getItem('kc_admin_pass')||'';return'Basic '+btoa(u+':'+p);}
-function saveApiConfig(){var url=document.getElementById('cfg-target-url').value,key=document.getElementById('cfg-target-key').value,model=document.getElementById('cfg-model-name').value;var tips=document.getElementById('api-save-tips');
-fetch('/admin/save',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({target_url:url,target_key:key,model_name:model})}).then(function(r){if(r.ok){tips.className='setting-tips success';tips.textContent='已保存';tips.style.display='block';setTimeout(function(){tips.style.display='none';},3000);}else throw new Error();}).catch(function(){tips.className='setting-tips error';tips.textContent='保存失败，请检查凭证';tips.style.display='block';});}
-function testBarkPush(){var tips=document.getElementById('bark-tips');fetch('/admin/test-bark',{headers:{'Authorization':getAuthHeader()}}).then(function(r){if(r.ok){tips.className='setting-tips success';tips.textContent='推送成功';}else throw new Error();tips.style.display='block';}).catch(function(){tips.className='setting-tips error';tips.textContent='推送失败';tips.style.display='block';});}
-function changeTheme(name){if(name==='lavender')document.body.style.background='linear-gradient(135deg,#e8e0f0 0%,#f3e5f5 100%)';else if(name==='warm')document.body.style.background='linear-gradient(135deg,#fff3e0 0%,#fce4ec 100%)';else document.body.style.background='';localStorage.setItem('kc_theme',name);document.querySelectorAll('.theme-btn').forEach(function(b){b.classList.remove('active');});var ab=document.querySelector('.theme-'+name);if(ab)ab.classList.add('active');}
-function initTheme(){var t=localStorage.getItem('kc_theme')||'default';changeTheme(t);}
-function clearChatHistory(){if(confirm('确定要清空所有聊天记录吗？')){historyList=[];localStorage.removeItem(STORAGE_HISTORY);messagesContainer.innerHTML='';refreshSettingsData();}}
-function logoutGateway(){localStorage.removeItem(STORAGE_KEY);location.reload();}
-
-init();
-</script>
+<script src="/static/app.js"></script>
 </body>
 </html>
