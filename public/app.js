@@ -73,7 +73,7 @@ var contentType=response.headers.get('content-type')||'',fullContent='';
 if(contentType.includes('application/json')){
   var parsedJson=await response.json();
   fullContent=parsedJson.choices&&parsedJson.choices[0]&&parsedJson.choices[0].message&&parsedJson.choices[0].message.content||'';
-  if(fullContent){aiBubble.textContent=fullContent;scrollToBottom();}
+  if(fullContent){aibubbleEl.textContent = String(text || '').replace(/\n{2,}/g, '\n');}
 }else{
   var reader=response.body.getReader(),decoder=new TextDecoder(),buffer='';
   while(true){var result=await reader.read();if(result.done)break;buffer+=decoder.decode(result.value,{stream:true});var lines=buffer.split('\n');buffer=lines.pop()||'';
