@@ -151,8 +151,3 @@ body{background:linear-gradient(135deg,#e8f5e9 0%,#fce4ec 100%);font-family:-app
 .bg-actions button{flex:1}
 .css-textarea{width:100%;min-height:80px;max-height:200px;border-radius:12px;border:1px solid rgba(0,0,0,0.06);background:rgba(255,255,255,.85);padding:10px 12px;font-size:16px;font-family:monospace;color:#333;outline:none;resize:vertical;box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
 .css-textarea:focus{border-color:#f06292}
-
-
-/* API model list */
-.api-model-actions{display:flex;align-items:center;gap:8px;margin:2px 0 8px;}
-.api-model-actions .setting-tips{margin:0;}

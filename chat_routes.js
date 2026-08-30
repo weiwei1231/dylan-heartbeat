@@ -6,12 +6,12 @@ var path = require("path");
 var spMod = require("./system_prompt");
 var rtPaths = require("./runtime_paths");
 var homeMod = require("./home_status");
-var { readEnvValue } = require("./env_config");
+var configStore = require("./config_store");
 
 var PUBLIC_DIR = path.join(__dirname, "public");
 var MIME_TYPES = {".html":"text/html; charset=utf-8",".css":"text/css; charset=utf-8",".js":"application/javascript; charset=utf-8",".json":"application/json",".png":"image/png",".jpg":"image/jpeg",".svg":"image/svg+xml",".ico":"image/x-icon"};
 
-function getDiaryDir(){return rtPaths.runtimeDirectory(readEnvValue("DIARY_DIR")||"diary","diary");}
+function getDiaryDir(){return rtPaths.runtimeDirectory(configStore.getConfigValue("DIARY_DIR","diary"),"diary");}
 function getMemoryDir(){return rtPaths.runtimeDirectory("memories","memories");}
 
 function registerChatRoutes(app){
@@ -46,6 +46,6 @@ function registerChatRoutes(app){
 }
 
 function injectSystemPrompt(llmMessages){var prompt=spMod.loadSystemPrompt();var idx=llmMessages.findIndex(function(m){return m.role==="system";});if(idx!==-1){llmMessages[idx]={role:"system",content:prompt};}else{llmMessages.unshift({role:"system",content:prompt});}}
-function buildUpstreamBody(originalBody,llmMessages){var modelName=String(readEnvValue("MODEL_NAME")||"gateway-model").trim()||"gateway-model";return Object.assign({},originalBody,{model:modelName,messages:llmMessages});}
+function buildUpstreamBody(originalBody,llmMessages){var modelName=String(configStore.getConfigValue("MODEL_NAME","gateway-model")).trim()||"gateway-model";return Object.assign({},originalBody,{model:modelName,messages:llmMessages});}
 
 module.exports={registerChatRoutes:registerChatRoutes,injectSystemPrompt:injectSystemPrompt,buildUpstreamBody:buildUpstreamBody};

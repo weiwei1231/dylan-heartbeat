@@ -12,7 +12,6 @@ const {
 } = require("./runtime_paths");
 const { isSpecialEventContent } = require("./special_events");
 const { decideRequestAccess } = require("./network_access");
-const { readEnvValue, readEnvBoolean } = require("./env_config");
 const {
   formatDateTimeInTimeZone,
   resolveTimeZone,
@@ -24,13 +23,14 @@ const { registerChatRoutes, injectSystemPrompt, buildUpstreamBody } = require(".
 const { hasTools, getToolDeclarations, handleToolCalls } = require("./tool_runner");
 require("./garden_tools").initGardenTools();
 const { runToolLoop } = require("./tool_loop");
+const { getConfigValue, getTargetApiUrl, getChatCompletionsUrl, getModelsUrl, saveConfig } = require("./config_store");
 
 
 
 const DEFAULT_BODY_LIMIT_MB = 50;
 
 function readBodyLimitBytes() {
-  const configured = Number(readEnvValue("REQUEST_BODY_LIMIT_MB"));
+  const configured = Number(process.env.REQUEST_BODY_LIMIT_MB);
   const mb = Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_BODY_LIMIT_MB;
   return Math.floor(mb * 1024 * 1024);
 }
@@ -42,7 +42,7 @@ const app = Fastify({
 
 app.register(require("@fastify/formbody"));
 
-const PORT = Number(readEnvValue("PORT")) || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 const TIME_ZONE = resolveTimeZone();
 const IS_RAILWAY_RUNTIME = Boolean(
   process.env.RAILWAY_ENVIRONMENT ||
@@ -55,17 +55,17 @@ const TIMESTAMP_DB_FILE = runtimeFile("message_timestamps.json");
 const DEFAULT_RESTART_COMMAND = "pm2 restart gateway wake-up --update-env";
 
 function readBooleanEnv(key, fallback = false) {
-  const raw = String(readEnvValue(key)).trim().toLowerCase();
+  const raw = String(getConfigValue(key)).trim().toLowerCase();
   if (!raw) return fallback;
   return ["1", "true", "yes", "on"].includes(raw);
 }
 
 function configuredModelName() {
-  return String(readEnvValue("MODEL_NAME") || "gateway-model").trim() || "gateway-model";
+  return String(getConfigValue("MODEL_NAME", "gateway-model")).trim() || "gateway-model";
 }
 
 function shouldForwardMultimodalContent() {
-  const mode = (readEnvValue("MULTIMODAL_MODE") || "passthrough").trim().toLowerCase();
+  const mode = (getConfigValue("MULTIMODAL_MODE", "passthrough") || "passthrough").trim().toLowerCase();
   return !["text", "plain", "placeholder", "false", "off", "0"].includes(mode);
 }
 
@@ -453,8 +453,8 @@ app.post("/v1/chat/completions", async (req, reply) => {
     }
     for (const idx of Array.from(removeSet).sort((a, b) => b - a)) { llmMessages.splice(idx, 1); }
 
-    const upstreamUrl = readEnvValue("TARGET_API_URL").trim();
-    const upstreamKey = readEnvValue("TARGET_API_KEY").trim();
+    const upstreamUrl = getChatCompletionsUrl();
+    const upstreamKey = getConfigValue("TARGET_API_KEY");
     if (!upstreamUrl || !upstreamKey) {
       return reply.code(500).send({ error: "TARGET_API_URL / TARGET_API_KEY 未配置" });
     }
@@ -569,6 +569,7 @@ app.post("/internal/wake-event", async (req, reply) => {
   } catch (err) { console.error(err); reply.code(500).send({ error: err.message }); }
 });
 
+function readEnvValue(key) { return getConfigValue(key); }
 
 function readEnvValueOrDefault(key, fallback) { const value = readEnvValue(key); return value === "" ? fallback : value; }
 function normalizePositiveInteger(value, key, fallback) { const n = Number(value); if (Number.isFinite(n) && n >= 1) return String(Math.floor(n)); return readEnvValueOrDefault(key, fallback); }
@@ -595,7 +596,7 @@ function basicAuth(req, reply, done) {
   if (scheme !== "Basic" || !encoded) { reply.code(401).header("WWW-Authenticate", 'Basic realm="Admin"').send("Unauthorized"); return; }
   const decoded = Buffer.from(encoded, "base64").toString();
   const colonIndex = decoded.indexOf(":");
-  if (decoded.substring(0, colonIndex) === readEnvValue("ADMIN_USER") && decoded.substring(colonIndex + 1) === readEnvValue("ADMIN_PASSWORD")) { done(); }
+  if (decoded.substring(0, colonIndex) === getConfigValue("ADMIN_USER") && decoded.substring(colonIndex + 1) === getConfigValue("ADMIN_PASSWORD")) { done(); }
   else { reply.code(401).header("WWW-Authenticate", 'Basic realm="Admin"').send("Unauthorized"); }
 }
 
@@ -605,44 +606,18 @@ app.get("/admin", { preHandler: basicAuth }, async (req, reply) => {
   reply.type("text/html").send(`<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><title>HEARTBEAT</title></head><body><h2>HEARTBEAT Runtime</h2><p>Gateway 运行中 (${serverUptime}秒) | Wake-up: ${escapeHtml(wakeUpStatus)}</p><p><a href="/admin">刷新</a></p></body></html>`);
 });
 
-app.post("/admin/models", { preHandler: basicAuth }, async (req, reply) => {
+app.get("/admin/models", { preHandler: basicAuth }, async (req, reply) => {
   try {
-    const body = req.body || {};
-    const baseUrl = String(body.target_url || readEnvValue("TARGET_API_URL")).trim().replace(/\/+$/, "");
-    const apiKey = String(body.target_key || readEnvValue("TARGET_API_KEY")).trim();
-
-    if (!baseUrl || !apiKey) {
-      return reply.code(400).send({ error: "请先填写中转站 URL / Key" });
-    }
-
-    let modelsUrl;
-    if (/\/v1\/chat\/completions$/i.test(baseUrl)) {
-      modelsUrl = baseUrl.replace(/\/chat\/completions$/i, "/models");
-    } else if (/\/v1$/i.test(baseUrl)) {
-      modelsUrl = `${baseUrl}/models`;
-    } else {
-      modelsUrl = `${baseUrl}/v1/models`;
-    }
-
-    const response = await fetch(modelsUrl, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${apiKey}`
-      },
-      signal: AbortSignal.timeout(15000)
-    });
-
+    const rawUrl = String(req.query?.target_url || getTargetApiUrl()).trim();
+    const rawKey = String(req.query?.target_key || getConfigValue("TARGET_API_KEY")).trim();
+    const modelsUrl = getModelsUrl(rawUrl);
+    if (!modelsUrl || !rawKey) return reply.code(400).send({ error: "请先填写中转站 URL 和 Key" });
+    const response = await fetch(modelsUrl, { method: "GET", headers: { Accept: "application/json", Authorization: `Bearer ${rawKey}` }, signal: AbortSignal.timeout(15000) });
     const text = await response.text();
-    let payload;
-    try {
-      payload = JSON.parse(text);
-    } catch {
-      payload = { error: "上游 /v1/models 返回的不是有效 JSON", raw: text.slice(0, 4000) };
-    }
-
-    if (!response.ok) return reply.code(response.status).send(payload);
-    return reply.send(payload);
+    let body;
+    try { body = JSON.parse(text); } catch { body = { error: "上游 /v1/models 返回的不是有效 JSON", raw: text.slice(0, 4000) }; }
+    if (!response.ok) return reply.code(response.status).send(body);
+    return reply.send(body);
   } catch (err) {
     console.error("[Admin Models] 获取模型列表失败:", err);
     return reply.code(502).send({ error: err.message || String(err) });
@@ -653,7 +628,7 @@ app.post("/admin/save", { preHandler: basicAuth }, async (req, reply) => {
   try {
     const { target_url, target_key, gateway_api_key, model_name, bark_key, custom_icon, day_wake_after, night_wake_after, day_check_interval, night_check_interval, wake_day_start_hour, wake_day_end_hour, weather_enabled, weather_location_name, weather_lat, weather_lon, weather_units } = req.body || {};
     if (!target_url || !model_name) return reply.code(400).send({ error: "target_url / model_name 必填" });
-    writeEnvUpdates({ TARGET_API_URL: target_url, TARGET_API_KEY: target_key || readEnvValue("TARGET_API_KEY"), GATEWAY_API_KEY: gateway_api_key || readEnvValue("GATEWAY_API_KEY"), MODEL_NAME: model_name, BARK_KEY: bark_key || readEnvValue("BARK_KEY"), CUSTOM_ICON_URL: custom_icon || "", DAY_WAKE_AFTER_MINUTES: normalizePositiveInteger(day_wake_after, "DAY_WAKE_AFTER_MINUTES", "60"), NIGHT_WAKE_AFTER_MINUTES: normalizePositiveInteger(night_wake_after, "NIGHT_WAKE_AFTER_MINUTES", "120"), DAY_CHECK_INTERVAL_MINUTES: normalizePositiveInteger(day_check_interval, "DAY_CHECK_INTERVAL_MINUTES", "10"), NIGHT_CHECK_INTERVAL_MINUTES: normalizePositiveInteger(night_check_interval, "NIGHT_CHECK_INTERVAL_MINUTES", "120"), WAKE_DAY_START_HOUR: normalizeHour(wake_day_start_hour, "WAKE_DAY_START_HOUR", "10", 0, 23), WAKE_DAY_END_HOUR: normalizeHour(wake_day_end_hour, "WAKE_DAY_END_HOUR", "24", 1, 24), WEATHER_ENABLED: normalizeBooleanString(weather_enabled, "WEATHER_ENABLED", "false"), WEATHER_LOCATION_NAME: weather_location_name || "", WEATHER_LAT: weather_lat || "", WEATHER_LON: weather_lon || "", WEATHER_UNITS: normalizeWeatherUnits(weather_units), ADMIN_USER: readEnvValue("ADMIN_USER"), ADMIN_PASSWORD: readEnvValue("ADMIN_PASSWORD") });
+    saveConfig({ TARGET_API_URL: target_url, TARGET_API_KEY: target_key || readEnvValue("TARGET_API_KEY"), GATEWAY_API_KEY: gateway_api_key || readEnvValue("GATEWAY_API_KEY"), MODEL_NAME: model_name, BARK_KEY: bark_key || readEnvValue("BARK_KEY"), CUSTOM_ICON_URL: custom_icon || "", DAY_WAKE_AFTER_MINUTES: normalizePositiveInteger(day_wake_after, "DAY_WAKE_AFTER_MINUTES", "60"), NIGHT_WAKE_AFTER_MINUTES: normalizePositiveInteger(night_wake_after, "NIGHT_WAKE_AFTER_MINUTES", "120"), DAY_CHECK_INTERVAL_MINUTES: normalizePositiveInteger(day_check_interval, "DAY_CHECK_INTERVAL_MINUTES", "10"), NIGHT_CHECK_INTERVAL_MINUTES: normalizePositiveInteger(night_check_interval, "NIGHT_CHECK_INTERVAL_MINUTES", "120"), WAKE_DAY_START_HOUR: normalizeHour(wake_day_start_hour, "WAKE_DAY_START_HOUR", "10", 0, 23), WAKE_DAY_END_HOUR: normalizeHour(wake_day_end_hour, "WAKE_DAY_END_HOUR", "24", 1, 24), WEATHER_ENABLED: normalizeBooleanString(weather_enabled, "WEATHER_ENABLED", "false"), WEATHER_LOCATION_NAME: weather_location_name || "", WEATHER_LAT: weather_lat || "", WEATHER_LON: weather_lon || "", WEATHER_UNITS: normalizeWeatherUnits(weather_units), ADMIN_USER: readEnvValue("ADMIN_USER"), ADMIN_PASSWORD: readEnvValue("ADMIN_PASSWORD") });
     if (wantsJsonResponse(req)) return reply.send({ success: true });
     reply.type("text/html").send(`<h2>已保存</h2><a href="/admin">返回</a>`);
   } catch (err) { console.error(err); reply.code(500).send({ error: err.message }); }
@@ -683,7 +658,7 @@ app.post("/admin/restart", { preHandler: basicAuth }, async (req, reply) => {
 });
 
 app.get("/test-bark", { preHandler: basicAuth }, async (req, reply) => {
-  const barkKey = readEnvValue("BARK_KEY");
+  const barkKey = getConfigValue("BARK_KEY");
   if (!barkKey) return reply.code(400).send({ error: "BARK_KEY 未配置" });
   const barkUrl = `https://api.day.app/${barkKey}/${encodeURIComponent("Bark 测试")}/${encodeURIComponent("如果你收到这条，说明推送通道正常。")}`;
   try {
@@ -695,7 +670,7 @@ app.get("/test-bark", { preHandler: basicAuth }, async (req, reply) => {
 });
 
 app.get("/admin/test-bark", { preHandler: basicAuth }, async (req, reply) => {
-  const barkKey = readEnvValue("BARK_KEY");
+  const barkKey = getConfigValue("BARK_KEY");
   if (!barkKey) return reply.code(400).send({ error: "BARK_KEY 未配置" });
   const barkUrl = `https://api.day.app/${barkKey}/${encodeURIComponent("Bark 测试")}/${encodeURIComponent("如果你收到这条，说明推送通道正常。")}`;
   try {
@@ -708,6 +683,6 @@ app.get("/admin/test-bark", { preHandler: basicAuth }, async (req, reply) => {
 
 app.listen({ port: PORT, host: "0.0.0.0" }, (err, address) => {
   if (err) { console.error(err); process.exit(1); }
-  console.log(JSON.stringify({ event: "runtime_config_summary", railway: IS_RAILWAY_RUNTIME, persistent_data: Boolean(process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH), target_url_configured: Boolean(readEnvValue("TARGET_API_URL")), target_key_configured: Boolean(readEnvValue("TARGET_API_KEY")), model_configured: Boolean(readEnvValue("MODEL_NAME")), gateway_key_configured: Boolean(readEnvValue("GATEWAY_API_KEY")), data_dir_ready: fs.existsSync(DATA_DIR) }));
+  console.log(JSON.stringify({ event: "runtime_config_summary", railway: IS_RAILWAY_RUNTIME, persistent_data: Boolean(process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH), target_url_configured: Boolean(getTargetApiUrl()), target_key_configured: Boolean(getConfigValue("TARGET_API_KEY")), model_configured: Boolean(getConfigValue("MODEL_NAME")), gateway_key_configured: Boolean(readEnvValue("GATEWAY_API_KEY")), data_dir_ready: fs.existsSync(DATA_DIR) }));
   console.log(`✅ Gateway 运行在 ${address}`);
 });

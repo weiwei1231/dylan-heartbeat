@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const { buildNtfyPayload } = require("./ntfy_priority");
 const { ensureDataDir, runtimeDirectory, runtimeFile } = require("./runtime_paths");
+const configStore = require("./config_store");
 const { parseChatCompletionResponse } = require("./upstream_response");
 const {
   formatDateTimeInTimeZone,
@@ -13,29 +14,30 @@ const {
 } = require("./time_utils");
 const { getInjectedMemoryPrompt, runMemoryMaintenance } = require("./memory_system");
 const { checkDiaryCron } = require("./diary_cron");
-const { readEnvValue, readEnvBoolean, readEnvNumber } = require("./env_config");
 
 const DATA_DIR = ensureDataDir();
 const TIMELINE_PATH = runtimeFile("enhanced_messages.json");
 const PORT = Number(process.env.PORT) || 3000;
-function getGatewayBaseUrl() { return (readEnvValue("GATEWAY_BASE_URL") || `http://localhost:${PORT}`).replace(/\/+$/, ""); }
-function getGatewayUrl() { return `${getGatewayBaseUrl()}/internal/wake-event`; }
-function getHeartbeatUrl() { return `${getGatewayBaseUrl()}/internal/heartbeat`; }
+const GATEWAY_BASE_URL = (process.env.GATEWAY_BASE_URL || `http://localhost:${PORT}`).replace(/\/+$/, "");
+const GATEWAY_URL = `${GATEWAY_BASE_URL}/internal/wake-event`;
+const HEARTBEAT_URL = `${GATEWAY_BASE_URL}/internal/heartbeat`;
 const TIME_ZONE = resolveTimeZone();
 const WEATHER_TIMEOUT_MS = 5000;
-function getDiaryDirPath() { return runtimeDirectory(readEnvValue("DIARY_DIR") || "diary", "diary"); }
-
+const DIARY_DIR_NAME = configStore.getConfigValue("DIARY_DIR") || "diary";
+const DIARY_DIR_PATH = runtimeDirectory(DIARY_DIR_NAME, "diary");
+const PUSH_TIMEOUT_MS = readPositiveTimeout("PUSH_TIMEOUT_MS", 15_000);
+const WAKE_UPSTREAM_TIMEOUT_MS = readPositiveTimeout("WAKE_UPSTREAM_TIMEOUT_MS", 300_000);
 
 // Fallback: 服务启动时间，用于时间线为空时作为"最后活跃时间"
 const SERVICE_START_TIME = new Date();
 
 function readPositiveTimeout(key, fallback) {
-  const value = Number(readEnvValue(key));
+  const value = Number(process.env[key]);
   return Number.isFinite(value) && value >= 1000 ? Math.floor(value) : fallback;
 }
 
 function readNumberEnv(key, fallback, options = {}) {
-  const value = Number(readEnvValue(key));
+  const value = Number(process.env[key]);
   const min = options.min ?? -Infinity;
   const max = options.max ?? Infinity;
   if (Number.isFinite(value) && value >= min && value <= max) return value;
@@ -43,7 +45,7 @@ function readNumberEnv(key, fallback, options = {}) {
 }
 
 function readBooleanEnv(key, fallback = false) {
-  const raw = String(readEnvValue(key)).trim().toLowerCase();
+  const raw = String(process.env[key] ?? "").trim().toLowerCase();
   if (!raw) return fallback;
   return ["1", "true", "yes", "on"].includes(raw);
 }
@@ -80,8 +82,8 @@ function appendDiaryEntry(content) {
   const cleanContent = String(content || "").trim();
   if (!cleanContent) return false;
 
-  fs.mkdirSync(getDiaryDirPath(), { recursive: true });
-  const diaryFile = path.join(getDiaryDirPath(), `${getDiaryDateString()}.md`);
+  fs.mkdirSync(DIARY_DIR_PATH, { recursive: true });
+  const diaryFile = path.join(DIARY_DIR_PATH, `${getDiaryDateString()}.md`);
   const entry = `\n\n## ${getDiaryTimeString()}\n\n${cleanContent}\n`;
   fs.appendFileSync(diaryFile, entry, "utf-8");
   console.log(`已保存日记：${diaryFile}`);
@@ -89,22 +91,22 @@ function appendDiaryEntry(content) {
 }
 
 async function sendPushNotification({ title, body }) {
-  const provider = (readEnvValue("PUSH_PROVIDER") || "bark").trim().toLowerCase();
+  const provider = (process.env.PUSH_PROVIDER || "bark").trim().toLowerCase();
 
   if (provider === "ntfy") {
-    const topic = String(readEnvValue("NTFY_TOPIC") || "").trim();
+    const topic = String(process.env.NTFY_TOPIC || "").trim();
     if (!topic) return { ok: false, providerLabel: "ntfy", reason: "NTFY_TOPIC 未配置" };
 
-    const server = (readEnvValue("NTFY_SERVER_URL") || "https://ntfy.sh").replace(/\/+$/, "");
+    const server = (process.env.NTFY_SERVER_URL || "https://ntfy.sh").replace(/\/+$/, "");
     const headers = { "Content-Type": "application/json" };
-    if (readEnvValue("NTFY_TOKEN")) headers.Authorization = `Bearer ${readEnvValue("NTFY_TOKEN")}`;
+    if (process.env.NTFY_TOKEN) headers.Authorization = `Bearer ${process.env.NTFY_TOKEN}`;
     const payload = buildNtfyPayload({
       topic, title, message: body,
-      priority: readEnvValue("NTFY_PRIORITY"), tags: readEnvValue("NTFY_TAGS")
+      priority: process.env.NTFY_PRIORITY, tags: process.env.NTFY_TAGS
     });
 
     const response = await fetch(server, {
-      method: "POST", signal: AbortSignal.timeout(readPositiveTimeout("PUSH_TIMEOUT_MS", 15_000)),
+      method: "POST", signal: AbortSignal.timeout(PUSH_TIMEOUT_MS),
       headers, body: JSON.stringify(payload)
     });
     const responseText = await response.text();
@@ -116,18 +118,18 @@ async function sendPushNotification({ title, body }) {
     return { ok: false, providerLabel: provider || "未知渠道", reason: `不支持的 PUSH_PROVIDER：${provider}` };
   }
 
-  if (!readEnvValue("BARK_KEY")) {
+  if (!configStore.getConfigValue("BARK_KEY")) {
     return { ok: false, providerLabel: "Bark", reason: "Bark Key 未配置" };
   }
 
-  const barkKey = readEnvValue("BARK_KEY");
+  const barkKey = configStore.getConfigValue("BARK_KEY");
   const safeTitle = encodeURIComponent(title || "来自伴侣");
   const safeBody = encodeURIComponent(body || "");
   const barkUrl = `https://api.day.app/${barkKey}/${safeTitle}/${safeBody}`;
 
   try {
     const response = await fetch(barkUrl, {
-      method: "GET", signal: AbortSignal.timeout(readPositiveTimeout("PUSH_TIMEOUT_MS", 15_000))
+      method: "GET", signal: AbortSignal.timeout(PUSH_TIMEOUT_MS)
     });
     const responseText = await response.text();
     let result = {};
@@ -209,14 +211,14 @@ function weatherCodeText(code) {
 
 async function fetchWeatherContext() {
   if (!readBooleanEnv("WEATHER_ENABLED", false)) return "";
-  const lat = Number(readEnvValue("WEATHER_LAT"));
-  const lon = Number(readEnvValue("WEATHER_LON"));
+  const lat = Number(process.env.WEATHER_LAT);
+  const lon = Number(process.env.WEATHER_LON);
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
     console.log("已启用 WEATHER_ENABLED，但 WEATHER_LAT / WEATHER_LON 未正确配置，跳过天气注入");
     return "";
   }
-  const location = readEnvValue("WEATHER_LOCATION_NAME") || "当前位置";
-  const units = (readEnvValue("WEATHER_UNITS") || "metric").trim().toLowerCase();
+  const location = process.env.WEATHER_LOCATION_NAME || "当前位置";
+  const units = (process.env.WEATHER_UNITS || "metric").trim().toLowerCase();
   const temperatureUnit = units === "fahrenheit" ? "fahrenheit" : "celsius";
   const windSpeedUnit = units === "fahrenheit" ? "mph" : "kmh";
   const url = new URL("https://api.open-meteo.com/v1/forecast");
@@ -331,8 +333,8 @@ function buildWakePrompt(currentTime, diffMinutes, weatherContext = "", memoryCo
     return template;
   }
 
-  if (readEnvValue("WAKE_PROMPT_TEMPLATE")) {
-    let template = readEnvValue("WAKE_PROMPT_TEMPLATE")
+  if (process.env.WAKE_PROMPT_TEMPLATE) {
+    let template = process.env.WAKE_PROMPT_TEMPLATE
       .replace(/\\n/g, '\n')
       .replace(/\$\{currentTime\}/g, currentTime)
       .replace(/\$\{diffMinutes\}/g, diffMinutes)
@@ -410,8 +412,8 @@ async function runWakeUp() {
         return !c.includes("<memories>") && !c.includes("记忆库使用策略");
       })
       .map(msg => {
-        const userDisplay = readEnvValue("USER_DISPLAY_NAME") || "用户";
-        const aiDisplay = readEnvValue("AI_DISPLAY_NAME") || "AI";
+        const userDisplay = process.env.USER_DISPLAY_NAME || "用户";
+        const aiDisplay = process.env.AI_DISPLAY_NAME || "AI";
         const role = msg.role === "user" ? userDisplay : aiDisplay;
         let content = normalizeContentToText(msg.content);
         if (content.includes("## Memories")) {
@@ -452,20 +454,20 @@ ${historyText}`
   console.log("\n===== WAKE MESSAGES SUMMARY =====\n");
   console.log(JSON.stringify(summarizeWakeMessages(wakeMessages)));
 
-  if (!readEnvValue("TARGET_API_URL") || !readEnvValue("TARGET_API_KEY") || !readEnvValue("MODEL_NAME")) {
+  if (!configStore.getChatCompletionsUrl() || !configStore.getConfigValue("TARGET_API_KEY") || !configStore.getConfigValue("MODEL_NAME")) {
     console.log("缺少 TARGET_API_URL / TARGET_API_KEY / MODEL_NAME，跳过本次唤醒");
     return;
   }
 
-  const response = await fetch(readEnvValue("TARGET_API_URL"), {
+  const response = await fetch(configStore.getChatCompletionsUrl(), {
     method: "POST",
-    signal: AbortSignal.timeout(readPositiveTimeout("WAKE_UPSTREAM_TIMEOUT_MS", 300_000)),
+    signal: AbortSignal.timeout(WAKE_UPSTREAM_TIMEOUT_MS),
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${readEnvValue("TARGET_API_KEY")}`
+      Authorization: `Bearer ${configStore.getConfigValue("TARGET_API_KEY")}`
     },
     body: JSON.stringify({
-      model: readEnvValue("MODEL_NAME"),
+      model: configStore.getConfigValue("MODEL_NAME"),
       messages: wakeMessages,
       temperature: 0.8,
       top_p: 0.95,
@@ -558,7 +560,7 @@ ${historyText}`
   }
 
   try {
-    const eventResponse = await fetch(getGatewayUrl(), {
+    const eventResponse = await fetch(GATEWAY_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content: eventContent })
@@ -579,7 +581,7 @@ function getCheckIntervalMs() {
 async function scheduleNextCheck() {
   try {
     try {
-      await fetch(getHeartbeatUrl(), { method: "POST" });
+      await fetch(HEARTBEAT_URL, { method: "POST" });
     } catch {}
     await runWakeUp();
         await checkDiaryCron();
@@ -598,10 +600,10 @@ console.log(JSON.stringify({
   event: "wake_runtime_config_summary",
   railway: Boolean(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID || process.env.RAILWAY_SERVICE_ID),
   persistent_data: Boolean(process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH),
-  target_url_configured: Boolean(readEnvValue("TARGET_API_URL")),
-  target_key_configured: Boolean(readEnvValue("TARGET_API_KEY")),
-  model_configured: Boolean(readEnvValue("MODEL_NAME")),
-  push_provider_configured: Boolean(readEnvValue("BARK_KEY") || readEnvValue("NTFY_TOPIC")),
+  target_url_configured: Boolean(configStore.getChatCompletionsUrl()),
+  target_key_configured: Boolean(configStore.getConfigValue("TARGET_API_KEY")),
+  model_configured: Boolean(configStore.getConfigValue("MODEL_NAME")),
+  push_provider_configured: Boolean(configStore.getConfigValue("BARK_KEY") || process.env.NTFY_TOPIC),
   data_dir_ready: fs.existsSync(DATA_DIR)
 }));
 console.log("==================================\n");
