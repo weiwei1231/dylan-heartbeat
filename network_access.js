@@ -25,8 +25,9 @@ function decideRequestAccess(opts) {
     return isLoopbackIp(opts.ip) ? { allow: true } : { allow: false, status: 403, error: "Forbidden" };
   }
 
-  if (opts.allowPublicApi && (requestPath.startsWith("/v1/") || requestPath.startsWith("/v1c") || requestPath.startsWith("/v1m"))) {
-    if (!opts.configuredKey) return { allow: false, status: 401, error: "公网 /v1 已开启，但 GATEWAY_API_KEY 未配置", authRejected: true };
+  // /api/* and /v1/* require gateway key auth
+  if (opts.allowPublicApi && (requestPath.startsWith("/v1/") || requestPath.startsWith("/v1c") || requestPath.startsWith("/v1m") || requestPath.startsWith("/api/"))) {
+    if (!opts.configuredKey) return { allow: false, status: 401, error: "GATEWAY_API_KEY 未配置", authRejected: true };
     var bearer = String(opts.authorization || "").match(/^Bearer\s+(.+)$/i);
     bearer = bearer ? bearer[1].trim() : "";
     var alternate = String(opts.headerKey || "").trim();
