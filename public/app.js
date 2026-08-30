@@ -24,7 +24,7 @@ textarea.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey)
 sendBtn.addEventListener('click',function(){if(!isGenerating&&textarea.value.trim())sendMessage();});
 document.getElementById('note-input').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();sendNote();}});
 document.getElementById('avatar-upload').addEventListener('change',handleAvatarFile);
-initTheme();initAvatars();loadNotes();
+initTheme();initAvatars();loadNotes();loadHomeStatus();
 }
 
 function calcTogetherDays(){var start=new Date(START_DATE_STR),now=new Date();var d=Math.floor(Math.abs(now-start)/(1000*60*60*24));togetherDaysEl.textContent=d;var ad=document.getElementById('about-days');if(ad)ad.textContent=d;}
@@ -36,6 +36,17 @@ function autoResizeTextarea(){textarea.style.height='auto';textarea.style.height
 function getTimeString(){return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false});}
 function saveHistory(){if(historyList.length>60)historyList=historyList.slice(-60);localStorage.setItem(STORAGE_HISTORY,JSON.stringify(historyList));}
 function loadHistory(){messagesContainer.innerHTML='';var saved=localStorage.getItem(STORAGE_HISTORY);if(saved){try{historyList=JSON.parse(saved);historyList.forEach(function(msg){renderMessageUI(msg.role,msg.content,msg.time||getTimeString());});scrollToBottom();}catch(e){historyList=[];}}}
+
+/* Home status dynamic loading */
+function loadHomeStatus(){
+fetch('/api/home').then(function(r){return r.json();}).then(function(data){
+var moodEl=document.getElementById('home-mood');if(moodEl)moodEl.textContent=data.mood||'\u60f3\u4f60';
+var moodDescEl=document.getElementById('home-mood-desc');if(moodDescEl)moodDescEl.textContent='"'+(data.mood_desc||'')+'"';
+var noteEl=document.getElementById('home-note');if(noteEl)noteEl.textContent=data.note||'';
+var noteTimeEl=document.getElementById('home-note-time');if(noteTimeEl)noteTimeEl.textContent='\u5c0f\u514b\u8d34\u7684 \u00b7 '+(data.note_time||'\u4eca\u5929');
+var vvEl=document.getElementById('home-vv-status');if(vvEl)vvEl.textContent=data.vv_status||'\u7b49\u4f60\u56de\u5bb6';
+var keiEl=document.getElementById('home-kei-status');if(keiEl)keiEl.textContent=data.kei_status||'\u5728\u7ebf';
+}).catch(function(e){console.log('[Home] \u52a0\u8f7d\u5931\u8d25:',e.message);});}
 
 function renderMessageUI(role,text,time){var row=document.createElement('div');row.className='msg-row '+role;
 var keiAvatar=localStorage.getItem('kc_avatar_kei');
