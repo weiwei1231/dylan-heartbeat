@@ -6,6 +6,7 @@ var fs = require("fs");
 var path = require("path");
 var spMod = require("./system_prompt");
 var rtPaths = require("./runtime_paths");
+var homeMod = require("./home_status");
 
 var PUBLIC_DIR = path.join(__dirname, "public");
 
@@ -32,7 +33,7 @@ function registerChatRoutes(app) {
       var html = fs.readFileSync(htmlPath, "utf-8");
       reply.type("text/html").send(html);
     } catch (err) {
-      reply.code(500).send("前端页面未找到: " + err.message);
+      reply.code(500).send("\u524d\u7aef\u9875\u9762\u672a\u627e\u5230: " + err.message);
     }
   });
 
@@ -67,6 +68,9 @@ function registerChatRoutes(app) {
       reply.code(500).send({ error: err.message });
     }
   });
+
+  // 小窝动态数据API
+  homeMod.registerHomeRoutes(app);
 }
 
 function injectSystemPrompt(llmMessages) {
