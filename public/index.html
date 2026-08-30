@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>kei</title>
 <link rel="stylesheet" href="/style.css">
+<style id="kc-custom-css"></style>
 </head>
 <body>
 <div class="app-container">
@@ -64,6 +65,10 @@
 <div class="settings-group">
 <div class="glass-card setting-item" onclick="toggleSettingPanel(this)"><div class="setting-item-main"><div class="setting-icon">🎨</div><div class="setting-info"><div class="setting-title">界面主题</div><div class="setting-subtitle">背景与配色</div></div><div class="setting-arrow">›</div></div>
 <div class="setting-panel" onclick="event.stopPropagation()"><div class="theme-options"><div class="theme-btn theme-default" title="默认粉绿" onclick="changeTheme('default')"></div><div class="theme-btn theme-lavender" title="薰衣草紫" onclick="changeTheme('lavender')"></div><div class="theme-btn theme-warm" title="暖橘" onclick="changeTheme('warm')"></div></div></div></div>
+<div class="glass-card setting-item" onclick="toggleSettingPanel(this)"><div class="setting-item-main"><div class="setting-icon">🖼️</div><div class="setting-info"><div class="setting-title">背景图片</div><div class="setting-subtitle">自定义全局背景</div></div><div class="setting-arrow">›</div></div>
+<div class="setting-panel" onclick="event.stopPropagation()"><div class="bg-preview" id="bg-preview">未设置背景图</div><div class="bg-actions"><button class="kc-btn-sm" onclick="document.getElementById('bg-upload').click()">选择图片</button><button class="kc-btn-sm btn-danger" onclick="removeBgImage()">移除</button></div></div></div>
+<div class="glass-card setting-item" onclick="toggleSettingPanel(this)"><div class="setting-item-main"><div class="setting-icon">✏️</div><div class="setting-info"><div class="setting-title">自定义CSS</div><div class="setting-subtitle">高级样式覆盖</div></div><div class="setting-arrow">›</div></div>
+<div class="setting-panel" onclick="event.stopPropagation()"><textarea id="css-editor" class="css-textarea" placeholder="输入自定义CSS..."></textarea><button class="kc-btn-sm" onclick="saveCustomCSS()" style="margin-top:8px">应用</button></div></div>
 </div>
 <div class="settings-group">
 <div class="glass-card setting-item" onclick="toggleSettingPanel(this)"><div class="setting-item-main"><div class="setting-icon">💬</div><div class="setting-info"><div class="setting-title">聊天记录</div><div class="setting-subtitle">管理对话数据</div></div><div class="setting-arrow">›</div></div>
@@ -88,6 +93,7 @@
 </div>
 </div>
 <input type="file" id="avatar-upload" accept="image/*" style="display:none">
+<input type="file" id="bg-upload" accept="image/*" style="display:none">
 <script src="/app.js"></script>
 </body>
 </html>
