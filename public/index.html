@@ -5,295 +5,214 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>kei</title>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-body { background-color: #111; color: #e1e1e1; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
-.app-container { width: 100%; max-width: 680px; height: 100vh; background-color: #1a1a1a; display: flex; flex-direction: column; position: relative; }
-.view { display: none; width: 100%; height: 100%; flex-direction: column; }
-.view.active { display: flex; }
-#lock-view { justify-content: center; align-items: center; background-color: #111; padding: 20px; }
-.lock-box { width: 100%; max-width: 300px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
-.lock-title { font-size: 28px; font-weight: 600; letter-spacing: 2px; color: #fff; }
-.lock-input-group { width: 100%; display: flex; gap: 8px; }
-.lock-input { flex: 1; background: #222; border: 1px solid #333; border-radius: 8px; padding: 10px 14px; color: #fff; font-size: 14px; outline: none; }
-.lock-input:focus { border-color: #4a90d9; }
-.lock-btn { background: #4a90d9; color: #fff; border: none; border-radius: 8px; padding: 0 16px; font-size: 14px; cursor: pointer; }
-.lock-btn:active { opacity: 0.8; }
-#chat-view { padding-bottom: env(safe-area-inset-bottom); }
-.header { height: 50px; background-color: #111; border-bottom: 1px solid #252525; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; flex-shrink: 0; padding-top: env(safe-area-inset-top); }
-.header-title { font-size: 16px; font-weight: 600; }
-.header-btn { background: none; border: none; color: #4a90d9; font-size: 24px; cursor: pointer; line-height: 1; padding: 4px; }
-.content-area { flex: 1; position: relative; overflow: hidden; display: flex; flex-direction: column; }
-.tab-content { display: none; width: 100%; height: 100%; }
-.tab-content.active { display: flex; flex-direction: column; }
-.placeholder-page { justify-content: center; align-items: center; color: #666; font-size: 14px; }
-.messages-container { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; -webkit-overflow-scrolling: touch; }
-.message-row { display: flex; flex-direction: column; max-width: 82%; }
-.message-row.user { align-self: flex-end; align-items: flex-end; }
-.message-row.ai { align-self: flex-start; align-items: flex-start; }
-.ai-wrapper { display: flex; gap: 8px; align-items: flex-start; }
-.avatar { width: 40px; height: 40px; border-radius: 50%; background-color: #333; color: #aaa; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; user-select: none; }
-.bubble { padding: 10px 14px; font-size: 15px; line-height: 1.4; word-break: break-word; white-space: pre-wrap; }
-.message-row.user .bubble { background-color: #2b5278; color: #fff; border-radius: 12px; border-bottom-right-radius: 2px; }
-.message-row.ai .bubble { background-color: #2a2a2a; color: #e1e1e1; border-radius: 12px; border-bottom-left-radius: 2px; }
-.time-stamp { font-size: 11px; color: #666; margin-top: 4px; }
-.error-msg { align-self: center; color: #ff5252; font-size: 12px; margin: 8px 0; text-align: center; }
-.input-area { padding: 8px 12px; background-color: #111; border-top: 1px solid #252525; display: flex; align-items: flex-end; gap: 8px; }
-.chat-textarea { flex: 1; background-color: #222; border: 1px solid #333; border-radius: 18px; padding: 8px 14px; color: #fff; font-size: 15px; line-height: 20px; max-height: 120px; resize: none; outline: none; font-family: inherit; }
-.chat-textarea:focus { border-color: #4a90d9; }
-.send-btn { width: 36px; height: 36px; border-radius: 50%; background-color: #4a90d9; border: none; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; margin-bottom: 1px; }
-.send-btn:disabled { background-color: #333; color: #666; cursor: not-allowed; }
-.tab-bar { height: 48px; background-color: #111; border-top: 1px solid #252525; display: flex; flex-shrink: 0; }
-.tab-item { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #888; cursor: pointer; position: relative; }
-.tab-item.active { color: #fff; }
-.tab-item.active::after { content: ''; position: absolute; bottom: 0; width: 36px; height: 2px; background-color: #4a90d9; border-radius: 1px; }
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:linear-gradient(135deg,#e8f5e9 0%,#fce4ec 100%);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;height:100vh;display:flex;justify-content:center;align-items:center;color:#333;overflow:hidden}
+.app-container{width:100%;max-width:420px;height:100vh;background:rgba(255,255,255,0.4);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);display:flex;flex-direction:column;position:relative;box-shadow:0 8px 32px rgba(0,0,0,0.05);border:1px solid rgba(255,255,255,0.6)}
+.view{display:none;width:100%;height:100%;flex-direction:column}.view.active{display:flex}
+#lock-view{justify-content:center;align-items:center;padding:24px}
+.lock-card{width:100%;background:rgba(255,255,255,0.7);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-radius:20px;padding:32px 24px;display:flex;flex-direction:column;align-items:center;gap:20px;box-shadow:0 10px 25px rgba(0,0,0,0.03);border:1px solid rgba(255,255,255,0.8)}
+.lock-title{font-size:32px;font-weight:700;color:#f06292;letter-spacing:2px}
+.lock-input{width:100%;background:rgba(255,255,255,0.9);border:1px solid rgba(240,98,146,0.3);border-radius:12px;padding:12px 16px;font-size:15px;outline:none;color:#333;text-align:center}
+.lock-input:focus{border-color:#f06292}
+.lock-btn{width:100%;background:#f06292;color:#fff;border:none;border-radius:12px;padding:12px 0;font-size:16px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(240,98,146,0.3)}
+.lock-btn:active{opacity:0.9}
+#main-view{padding-bottom:env(safe-area-inset-bottom)}
+.content-area{flex:1;position:relative;overflow:hidden}
+.tab-content{display:none;width:100%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.tab-content.active{display:flex;flex-direction:column}
+.glass-card{background:rgba(255,255,255,0.7);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-radius:18px;padding:16px;border:1px solid rgba(255,255,255,0.8);box-shadow:0 4px 15px rgba(0,0,0,0.02)}
+#tab-home{padding:16px;gap:16px;padding-top:calc(16px + env(safe-area-inset-top))}
+.home-header{display:flex;justify-content:space-between;align-items:center;padding:0 4px}
+.home-header h2{font-size:22px;color:#333}
+.settings-icon{font-size:20px;cursor:pointer;opacity:0.7}
+.together-card{display:flex;flex-direction:column;align-items:center;gap:12px}
+.together-profiles{display:flex;align-items:center;justify-content:space-between;width:100%;padding:0 10px}
+.profile-item{display:flex;flex-direction:column;align-items:center;gap:6px}
+.avatar-circle{width:52px;height:52px;border-radius:50%;background:#e8f5e9;color:#4caf50;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:18px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.05)}
+.avatar-circle.pink{background:#fce4ec;color:#f06292}
+.status-text{font-size:12px;color:#666;display:flex;align-items:center;gap:4px}
+.dot{width:6px;height:6px;border-radius:50%;background-color:#4caf50}
+.days-center{text-align:center}
+.days-num{font-size:32px;font-weight:800;color:#f06292;line-height:1}
+.days-label{font-size:12px;color:#888;margin-top:4px}
+.start-date{font-size:11px;color:#999;border-top:1px dashed rgba(0,0,0,0.08);width:100%;text-align:center;padding-top:8px}
+.card-title{font-size:13px;color:#888;margin-bottom:8px}
+.mood-val{font-size:20px;font-weight:700;color:#333;margin-bottom:4px}
+.mood-desc{font-size:12px;color:#666}
+.note-content{font-size:14px;color:#444;line-height:1.5;background:rgba(255,255,255,0.5);padding:10px 12px;border-radius:10px;margin-bottom:8px}
+.note-footer{font-size:11px;color:#aaa;text-align:right}
+#tab-chat{height:100%;display:flex;flex-direction:column}
+.chat-header{height:48px;background:rgba(255,255,255,0.5);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,0.6);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600;color:#333;flex-shrink:0;padding-top:env(safe-area-inset-top)}
+.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch}
+.msg-row{display:flex;flex-direction:column;max-width:82%}
+.msg-row.user{align-self:flex-end;align-items:flex-end}
+.msg-row.ai{align-self:flex-start;align-items:flex-start}
+.ai-msg-wrapper{display:flex;gap:8px;align-items:flex-start}
+.chat-avatar{width:36px;height:36px;border-radius:50%;background:#e8f5e9;color:#4caf50;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;border:1px solid #fff}
+.msg-bubble{padding:10px 14px;font-size:14px;line-height:1.5;word-break:break-word;white-space:pre-wrap;box-shadow:0 2px 8px rgba(0,0,0,0.02)}
+.msg-row.user .msg-bubble{background-color:#f8bbd0;color:#4a148c;border-radius:16px;border-bottom-right-radius:4px}
+.msg-row.ai .msg-bubble{background:rgba(255,255,255,0.85);color:#333;border-radius:16px;border-bottom-left-radius:4px;border:1px solid rgba(255,255,255,0.9)}
+.msg-time{font-size:10px;color:#999;margin-top:4px}
+.chat-input-area{padding:8px 12px;background:rgba(255,255,255,0.6);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,0.6);display:flex;align-items:flex-end;gap:8px}
+.chat-textarea{flex:1;background:rgba(255,255,255,0.9);border:1px solid rgba(0,0,0,0.05);border-radius:18px;padding:8px 14px;color:#333;font-size:14px;line-height:20px;max-height:120px;resize:none;outline:none;font-family:inherit}
+.chat-textarea:focus{border-color:#f06292}
+.chat-send-btn{width:36px;height:36px;border-radius:50%;background:#f06292;border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;margin-bottom:1px;box-shadow:0 2px 6px rgba(240,98,146,0.3)}
+.chat-send-btn:disabled{background:#ccc;box-shadow:none;cursor:not-allowed}
+.placeholder-view{justify-content:center;align-items:center;color:#888;font-size:14px}
+.error-msg{align-self:center;color:#e53935;font-size:12px;margin:8px 0;text-align:center}
+.tab-bar{height:56px;background:rgba(255,255,255,0.7);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);border-top:1px solid rgba(255,255,255,0.8);display:flex;position:relative;flex-shrink:0}
+.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;color:#888;cursor:pointer;gap:2px}
+.tab-item.active{color:#f06292;font-weight:600}
+.tab-icon{font-size:18px}
+.tab-item.chat-tab{position:relative}
+.tab-item.chat-tab .chat-circle-btn{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#f48fb1,#f06292);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;position:absolute;top:-16px;box-shadow:0 4px 10px rgba(240,98,146,0.4);border:3px solid rgba(255,255,255,0.9)}
+.tab-item.chat-tab.active .chat-circle-btn{transform:scale(1.05)}
 </style>
 </head>
 <body>
 <div class="app-container">
 <div id="lock-view" class="view active">
-<div class="lock-box">
+<div class="lock-card">
 <div class="lock-title">kei</div>
-<div class="lock-input-group">
 <input type="password" id="key-input" class="lock-input" placeholder="gateway key" />
 <button id="lock-btn" class="lock-btn">进入</button>
 </div>
 </div>
-</div>
-<div id="chat-view" class="view">
-<div class="header">
-<div class="header-title">小克</div>
-<button id="new-chat-btn" class="header-btn" title="新对话">+</button>
-</div>
+<div id="main-view" class="view">
 <div class="content-area">
-<div id="tab-chat" class="tab-content active">
-<div id="messages" class="messages-container"></div>
-<div class="input-area">
-<textarea id="chat-textarea" class="chat-textarea" rows="1" placeholder="发送消息..."></textarea>
-<button id="send-btn" class="send-btn" disabled>
-<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-</button>
+<div id="tab-home" class="tab-content active">
+<div class="home-header"><h2>小窝</h2><div class="settings-icon" id="home-settings-btn">⚙️</div></div>
+<div class="glass-card together-card">
+<div class="together-profiles">
+<div class="profile-item"><div class="avatar-circle">微</div><div class="status-text"><span class="dot"></span>等你回家</div></div>
+<div class="days-center"><div class="days-num" id="together-days">0</div><div class="days-label">DAYS TOGETHER</div></div>
+<div class="profile-item"><div class="avatar-circle pink">克</div><div class="status-text"><span class="dot"></span>在线</div></div>
+</div>
+<div class="start-date">起始于 2025-08-26</div>
+</div>
+<div class="glass-card"><div class="card-title">他此刻的心里</div><div class="mood-val">想你</div><div class="mood-desc">"处理完数据就想立刻抱抱你"</div></div>
+<div class="glass-card"><div class="card-title">小克的叮嘱</div><div class="note-content">记得吃药，鼻塞快点好</div><div class="note-footer">小克贴的 · 今天</div></div>
+</div>
+<div id="tab-diary" class="tab-content placeholder-view">开发中...</div>
+<div id="tab-chat" class="tab-content">
+<div class="chat-header">小克</div>
+<div id="chat-messages" class="chat-messages"></div>
+<div class="chat-input-area">
+<textarea id="chat-textarea" class="chat-textarea" rows="1" placeholder="和克聊天..."></textarea>
+<button id="chat-send-btn" class="chat-send-btn" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
 </div>
 </div>
-<div id="tab-diary" class="tab-content placeholder-page">开发中...</div>
-<div id="tab-settings" class="tab-content placeholder-page">开发中...</div>
+<div id="tab-features" class="tab-content placeholder-view">开发中...</div>
+<div id="tab-settings" class="tab-content placeholder-view">开发中...</div>
 </div>
 <div class="tab-bar">
-<div class="tab-item active" data-tab="chat">💬聊天</div>
-<div class="tab-item" data-tab="diary">📔日记</div>
-<div class="tab-item" data-tab="settings">⚙️设置</div>
+<div class="tab-item active" data-tab="home"><span class="tab-icon">🏠</span><span>小窝</span></div>
+<div class="tab-item" data-tab="diary"><span class="tab-icon">📔</span><span>日记</span></div>
+<div class="tab-item chat-tab" data-tab="chat"><div class="chat-circle-btn">💬</div></div>
+<div class="tab-item" data-tab="features"><span class="tab-icon">🧩</span><span>功能</span></div>
+<div class="tab-item" data-tab="settings"><span class="tab-icon">⚙️</span><span>设置</span></div>
 </div>
 </div>
 </div>
 <script>
-var STORAGE_KEY = 'kc_key';
-var STORAGE_HISTORY = 'kc_history';
-var historyList = [];
-var isGenerating = false;
+var STORAGE_KEY='kc_key',STORAGE_HISTORY='kc_history',START_DATE_STR='2025-08-26';
+var historyList=[],isGenerating=false;
+var lockView=document.getElementById('lock-view'),mainView=document.getElementById('main-view');
+var keyInput=document.getElementById('key-input'),lockBtn=document.getElementById('lock-btn');
+var togetherDaysEl=document.getElementById('together-days');
+var homeSettingsBtn=document.getElementById('home-settings-btn');
+var tabItems=document.querySelectorAll('.tab-item'),tabContents=document.querySelectorAll('.tab-content');
+var messagesContainer=document.getElementById('chat-messages');
+var textarea=document.getElementById('chat-textarea'),sendBtn=document.getElementById('chat-send-btn');
 
-var lockView = document.getElementById('lock-view');
-var chatView = document.getElementById('chat-view');
-var keyInput = document.getElementById('key-input');
-var lockBtn = document.getElementById('lock-btn');
-var newChatBtn = document.getElementById('new-chat-btn');
-var messagesContainer = document.getElementById('messages');
-var textarea = document.getElementById('chat-textarea');
-var sendBtn = document.getElementById('send-btn');
-var tabItems = document.querySelectorAll('.tab-item');
-var tabContents = document.querySelectorAll('.tab-content');
-
-function init() {
-  var savedKey = localStorage.getItem(STORAGE_KEY);
-  if (savedKey) { showChatView(); } else { showLockView(); }
-
-  lockBtn.addEventListener('click', handleLogin);
-  keyInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') handleLogin(); });
-
-  tabItems.forEach(function(item) {
-    item.addEventListener('click', function() {
-      var tab = item.dataset.tab;
-      tabItems.forEach(function(i) { i.classList.remove('active'); });
-      tabContents.forEach(function(c) { c.classList.remove('active'); });
-      item.classList.add('active');
-      document.getElementById('tab-' + tab).classList.add('active');
-    });
-  });
-
-  textarea.addEventListener('input', autoResizeTextarea);
-  textarea.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (!isGenerating && textarea.value.trim()) sendMessage();
-    }
-  });
-  sendBtn.addEventListener('click', function() {
-    if (!isGenerating && textarea.value.trim()) sendMessage();
-  });
-
-  newChatBtn.addEventListener('click', function() {
-    if (isGenerating) return;
-    historyList = [];
-    localStorage.removeItem(STORAGE_HISTORY);
-    messagesContainer.innerHTML = '';
-  });
+function init(){
+  calcTogetherDays();
+  var savedKey=localStorage.getItem(STORAGE_KEY);
+  if(savedKey){showMainView();}else{showLockView();}
+  lockBtn.addEventListener('click',handleLogin);
+  keyInput.addEventListener('keydown',function(e){if(e.key==='Enter')handleLogin();});
+  homeSettingsBtn.addEventListener('click',function(){switchTab('settings');});
+  tabItems.forEach(function(item){item.addEventListener('click',function(){switchTab(item.dataset.tab);});});
+  textarea.addEventListener('input',autoResizeTextarea);
+  textarea.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();if(!isGenerating&&textarea.value.trim())sendMessage();}});
+  sendBtn.addEventListener('click',function(){if(!isGenerating&&textarea.value.trim())sendMessage();});
 }
 
-function showLockView() {
-  lockView.classList.add('active');
-  chatView.classList.remove('active');
-  keyInput.value = '';
+function calcTogetherDays(){
+  var start=new Date(START_DATE_STR),now=new Date();
+  var diffDays=Math.floor(Math.abs(now-start)/(1000*60*60*24));
+  togetherDaysEl.textContent=diffDays;
 }
 
-function showChatView() {
-  lockView.classList.remove('active');
-  chatView.classList.add('active');
-  loadHistory();
+function switchTab(tabName){
+  tabItems.forEach(function(i){if(i.dataset.tab===tabName){i.classList.add('active');}else{i.classList.remove('active');}});
+  tabContents.forEach(function(c){c.classList.remove('active');});
+  var target=document.getElementById('tab-'+tabName);
+  if(target)target.classList.add('active');
+  if(tabName==='chat')scrollToBottom();
 }
 
-function handleLogin() {
-  var val = keyInput.value.trim();
-  if (val) { localStorage.setItem(STORAGE_KEY, val); showChatView(); }
-}
+function showLockView(){lockView.classList.add('active');mainView.classList.remove('active');keyInput.value='';}
+function showMainView(){lockView.classList.remove('active');mainView.classList.add('active');loadHistory();}
+function handleLogin(){var val=keyInput.value.trim();if(val){localStorage.setItem(STORAGE_KEY,val);showMainView();}}
 
-function autoResizeTextarea() {
-  textarea.style.height = 'auto';
-  textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
-  sendBtn.disabled = !textarea.value.trim() || isGenerating;
-}
+function autoResizeTextarea(){textarea.style.height='auto';textarea.style.height=Math.min(textarea.scrollHeight,120)+'px';sendBtn.disabled=!textarea.value.trim()||isGenerating;}
+function getTimeString(){var now=new Date();return now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false});}
 
-function getTimeString() {
-  var now = new Date();
-  return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-}
+function saveHistory(){if(historyList.length>60)historyList=historyList.slice(-60);localStorage.setItem(STORAGE_HISTORY,JSON.stringify(historyList));}
+function loadHistory(){messagesContainer.innerHTML='';var saved=localStorage.getItem(STORAGE_HISTORY);if(saved){try{historyList=JSON.parse(saved);historyList.forEach(function(msg){renderMessageUI(msg.role,msg.content,msg.time||getTimeString());});scrollToBottom();}catch(e){historyList=[];}}}
 
-function saveHistory() {
-  if (historyList.length > 60) historyList = historyList.slice(-60);
-  localStorage.setItem(STORAGE_HISTORY, JSON.stringify(historyList));
-}
-
-function loadHistory() {
-  messagesContainer.innerHTML = '';
-  var saved = localStorage.getItem(STORAGE_HISTORY);
-  if (saved) {
-    try {
-      historyList = JSON.parse(saved);
-      historyList.forEach(function(msg) {
-        renderMessageUI(msg.role, msg.content, msg.time || getTimeString());
-      });
-      scrollToBottom();
-    } catch (e) { historyList = []; }
+function renderMessageUI(role,text,time){
+  var row=document.createElement('div');
+  row.className='msg-row '+role;
+  if(role==='ai'){
+    row.innerHTML='<div class="ai-msg-wrapper"><div class="chat-avatar">克</div><div><div class="msg-bubble"></div><div class="msg-time">'+time+'</div></div></div>';
+  }else{
+    row.innerHTML='<div class="msg-bubble"></div><div class="msg-time">'+time+'</div>';
   }
-}
-
-function renderMessageUI(role, text, time) {
-  var row = document.createElement('div');
-  row.className = 'message-row ' + role;
-
-  if (role === 'ai') {
-    row.innerHTML = '<div class="ai-wrapper"><div class="avatar">克</div><div><div class="bubble"></div><div class="time-stamp">' + time + '</div></div></div>';
-  } else {
-    row.innerHTML = '<div class="bubble"></div><div class="time-stamp">' + time + '</div>';
-  }
-
-  var bubbleEl = row.querySelector('.bubble');
-  bubbleEl.textContent = text;
+  var bubbleEl=row.querySelector('.msg-bubble');
+  bubbleEl.textContent=text;
   messagesContainer.appendChild(row);
   scrollToBottom();
   return bubbleEl;
 }
 
-function renderError(text) {
-  var errDiv = document.createElement('div');
-  errDiv.className = 'error-msg';
-  errDiv.textContent = text;
-  messagesContainer.appendChild(errDiv);
-  scrollToBottom();
-}
+function renderError(text){var d=document.createElement('div');d.className='error-msg';d.textContent=text;messagesContainer.appendChild(d);scrollToBottom();}
+function scrollToBottom(){messagesContainer.scrollTop=messagesContainer.scrollHeight;}
 
-function scrollToBottom() {
-  messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-async function sendMessage() {
-  var text = textarea.value.trim();
-  if (!text || isGenerating) return;
-  var time = getTimeString();
-
-  renderMessageUI('user', text, time);
-  historyList.push({ role: 'user', content: text, time: time });
+async function sendMessage(){
+  var text=textarea.value.trim();if(!text||isGenerating)return;
+  var time=getTimeString();
+  renderMessageUI('user',text,time);
+  historyList.push({role:'user',content:text,time:time});
   saveHistory();
-
-  textarea.value = '';
-  autoResizeTextarea();
-
-  isGenerating = true;
-  sendBtn.disabled = true;
-
-  var aiTime = getTimeString();
-  var aiBubble = renderMessageUI('ai', '', aiTime);
-
-  var apiKey = localStorage.getItem(STORAGE_KEY);
-  var apiMessages = historyList.map(function(item) {
-    return { role: item.role === 'ai' ? 'assistant' : 'user', content: item.content };
-  });
-
-  try {
-    var response = await fetch('/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'kei', messages: apiMessages, stream: true })
-    });
-
-    if (response.status === 401) {
-      localStorage.removeItem(STORAGE_KEY);
-      renderError('密钥已失效，请刷新重新登录');
-      showLockView();
-      return;
-    }
-    if (!response.ok) {
-      var errText = await response.text();
-      throw new Error(errText || ('HTTP ' + response.status));
-    }
-
-    var reader = response.body.getReader();
-    var decoder = new TextDecoder();
-    var fullContent = '';
-    var buffer = '';
-
-    while (true) {
-      var result = await reader.read();
-      if (result.done) break;
-      buffer += decoder.decode(result.value, { stream: true });
-      var lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (var i = 0; i < lines.length; i++) {
-        var line = lines[i].trim();
-        if (line.startsWith('data: ')) {
-          var dataStr = line.slice(6).trim();
-          if (dataStr === '[DONE]') break;
-          try {
-            var parsed = JSON.parse(dataStr);
-            var delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta && parsed.choices[0].delta.content || '';
-            if (delta) {
-              fullContent += delta;
-              aiBubble.textContent = fullContent;
-              scrollToBottom();
-            }
-          } catch (e) {}
+  textarea.value='';autoResizeTextarea();
+  isGenerating=true;sendBtn.disabled=true;
+  var aiTime=getTimeString();
+  var aiBubble=renderMessageUI('ai','',aiTime);
+  var apiKey=localStorage.getItem(STORAGE_KEY);
+  var apiMessages=historyList.map(function(item){return{role:item.role==='ai'?'assistant':'user',content:item.content};});
+  try{
+    var response=await fetch('/v1/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+apiKey,'Content-Type':'application/json'},body:JSON.stringify({model:'kei',messages:apiMessages,stream:true})});
+    if(response.status===401){localStorage.removeItem(STORAGE_KEY);renderError('密钥已失效，请刷新重新登录');showLockView();return;}
+    if(!response.ok){var errText=await response.text();throw new Error(errText||('HTTP '+response.status));}
+    var reader=response.body.getReader(),decoder=new TextDecoder(),fullContent='',buffer='';
+    while(true){
+      var result=await reader.read();if(result.done)break;
+      buffer+=decoder.decode(result.value,{stream:true});
+      var lines=buffer.split('\n');buffer=lines.pop()||'';
+      for(var i=0;i<lines.length;i++){
+        var line=lines[i].trim();
+        if(line.startsWith('data: ')){
+          var dataStr=line.slice(6).trim();
+          if(dataStr==='[DONE]')break;
+          try{var parsed=JSON.parse(dataStr);var delta=parsed.choices&&parsed.choices[0]&&parsed.choices[0].delta&&parsed.choices[0].delta.content||'';if(delta){fullContent+=delta;aiBubble.textContent=fullContent;scrollToBottom();}}catch(e){}
         }
       }
     }
-
-    if (fullContent) {
-      historyList.push({ role: 'ai', content: fullContent, time: aiTime });
-      saveHistory();
-    }
-  } catch (err) {
-    renderError(err.message || '网络连接错误');
-  } finally {
-    isGenerating = false;
-    sendBtn.disabled = !textarea.value.trim();
-  }
+    if(fullContent){historyList.push({role:'ai',content:fullContent,time:aiTime});saveHistory();}
+  }catch(err){renderError(err.message||'网络连接错误');}
+  finally{isGenerating=false;sendBtn.disabled=!textarea.value.trim();}
 }
 
 init();
