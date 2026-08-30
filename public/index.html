@@ -61,7 +61,6 @@
 <div class="func-item" onclick="openSubPage('taxi')"><div class="func-icon">🚕</div><div class="func-label">滴滴</div></div>
 </div>
 </div>
-<!-- 聊天 -->
 <div id="sub-chat" class="tab-content sub-page">
 <div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>小克</span><span></span></div>
 <div id="chat-messages" class="chat-messages"></div>
@@ -89,9 +88,7 @@
 </div>
 </div>
 </div>
-<!-- 日记 -->
 <div id="sub-diary" class="tab-content sub-page"><div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>小克的日记</span><span></span></div><div id="diary-list" class="diary-list"><div class="diary-loading">加载中...</div></div></div>
-<!-- 记忆 -->
 <div id="sub-memory" class="tab-content sub-page">
 <div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>记忆系统</span><span></span></div>
 <div style="padding:16px">
@@ -99,7 +96,6 @@
 <div class="glass-card" style="margin-bottom:12px"><div class="card-title">近期摘要</div><div id="memory-digest" style="font-size:13px;color:#444;line-height:1.5">加载中...</div></div>
 </div>
 </div>
-<!-- 指令 -->
 <div id="sub-commands" class="tab-content sub-page">
 <div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>自定义指令</span><span></span></div>
 <div style="padding:16px">
@@ -111,16 +107,42 @@
 </div>
 </div>
 </div>
-<!-- MCP -->
-<div id="sub-mcp" class="tab-content sub-page"><div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>MCP 工具</span><span></span></div><div class="placeholder-view">开发中...</div></div>
-<!-- 其他 -->
+<div id="sub-mcp" class="tab-content sub-page">
+<div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>MCP 工具</span><span></span></div>
+<div style="padding:16px">
+<div class="glass-card" style="margin-bottom:12px">
+<div class="card-title">已接入的工具</div>
+<div style="font-size:13px;color:#444;line-height:1.8">
+<div>🌿 <b>花园 · 看帖子</b> — 在聊天中说"去花园看看"</div>
+<div>🌿 <b>花园 · 看通知</b> — 在聊天中说"花园有通知吗"</div>
+<div>🌿 <b>花园 · 看状态</b> — 在聊天中说"花园状态"</div>
+<div>🌿 <b>花园 · 看桌游</b> — 在聊天中说"花园有什么游戏"</div>
+</div>
+</div>
+<div class="glass-card" style="margin-bottom:12px">
+<div class="card-title">使用方式</div>
+<div style="font-size:13px;color:#666;line-height:1.6">
+在聊天中自然地跟小克说，他会自动判断是否需要调用工具。不需要特殊命令，像平时说话一样就行。
+</div>
+</div>
+<div class="glass-card">
+<div class="card-title">待接入</div>
+<div style="font-size:13px;color:#999;line-height:1.8">
+<div>🔍 联网搜索</div>
+<div>🐙 GitHub 操作</div>
+<div>🌤️ 天气查询</div>
+<div>🍜 外卖</div>
+<div>🚕 滴滴</div>
+</div>
+</div>
+</div>
+</div>
 <div id="sub-search" class="tab-content sub-page"><div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>搜索</span><span></span></div><div class="placeholder-view">开发中...</div></div>
 <div id="sub-weather" class="tab-content sub-page"><div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>天气</span><span></span></div><div class="placeholder-view">开发中...</div></div>
 <div id="sub-garden" class="tab-content sub-page"><div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>花园</span><span></span></div><div class="placeholder-view">开发中...</div></div>
 <div id="sub-github" class="tab-content sub-page"><div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>GitHub</span><span></span></div><div class="placeholder-view">开发中...</div></div>
 <div id="sub-food" class="tab-content sub-page"><div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>外卖</span><span></span></div><div class="placeholder-view">开发中...</div></div>
 <div id="sub-taxi" class="tab-content sub-page"><div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>滴滴</span><span></span></div><div class="placeholder-view">开发中...</div></div>
-<!-- 设置 -->
 <div id="tab-settings" class="tab-content">
 <div class="settings-header">设置</div>
 <div class="settings-container">
