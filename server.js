@@ -19,7 +19,7 @@ const {
 } = require("./time_utils");
 const { kelivoCompat } = require("./kelivo_compat");
 const { getInjectedMemoryPrompt, extractMemoryAsync } = require("./memory_system");
-const { registerChatRoutes, injectSystemPrompt } = require("./chat_routes");
+const { registerChatRoutes, injectSystemPrompt, buildUpstreamBody } = require("./chat_routes");
 
 const DEFAULT_BODY_LIMIT_MB = 50;
 
@@ -153,10 +153,6 @@ function summarizeMessagesForLog(messages = []) {
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
-
-function safeJsonForInlineScript(value) {
-  return JSON.stringify(value).replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
 }
 
 function loadTimeline() {
@@ -457,10 +453,11 @@ app.post("/v1/chat/completions", async (req, reply) => {
     }
 
     const requestedStream = body?.stream === true;
+    const upstreamBody = buildUpstreamBody(body, llmMessages);
     const response = await fetch(TARGET_API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.TARGET_API_KEY}` },
-      body: JSON.stringify({ ...body, messages: llmMessages })
+      body: JSON.stringify(upstreamBody)
     });
 
     const upstreamContentType = response.headers.get("content-type") || "";
@@ -472,7 +469,6 @@ app.post("/v1/chat/completions", async (req, reply) => {
 
     if (!shouldStreamResponse) {
       const responseText = await response.text();
-      // ===== 记忆提取层（非流式） =====
       try {
         const parsed = JSON.parse(responseText);
         const assistantReply = parsed.choices?.[0]?.message?.content || "";
@@ -493,7 +489,6 @@ app.post("/v1/chat/completions", async (req, reply) => {
       Connection: "keep-alive"
     });
 
-    // ===== 流式响应：边透传边累加，结束后异步提取记忆 =====
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let fullContent = "";
@@ -502,17 +497,11 @@ app.post("/v1/chat/completions", async (req, reply) => {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-
-      // 实时透传给客户端
       reply.raw.write(value);
-
-      // 解析 SSE 格式累加文本
       try {
         sseBuffer += decoder.decode(value, { stream: true });
         const lines = sseBuffer.split("\n");
-        // 保留最后一行（可能不完整）
         sseBuffer = lines.pop() || "";
-
         for (const line of lines) {
           if (line.startsWith("data: ") && line !== "data: [DONE]") {
             try {
@@ -527,7 +516,6 @@ app.post("/v1/chat/completions", async (req, reply) => {
 
     reply.raw.end();
 
-    // 流结束后异步提取记忆
     if (fullContent.trim() && lastUserText) {
       setImmediate(() => {
         extractMemoryAsync(lastUserText, fullContent).catch(err => {
