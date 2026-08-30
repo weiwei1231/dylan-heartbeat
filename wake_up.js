@@ -12,6 +12,7 @@ const {
   zonedWallTimeToDate
 } = require("./time_utils");
 const { getInjectedMemoryPrompt, runMemoryMaintenance } = require("./memory_system");
+const { checkDiaryCron } = require("./diary_cron");
 
 const DATA_DIR = ensureDataDir();
 const TIMELINE_PATH = runtimeFile("enhanced_messages.json");
@@ -582,6 +583,8 @@ async function scheduleNextCheck() {
       await fetch(HEARTBEAT_URL, { method: "POST" });
     } catch {}
     await runWakeUp();
+        await checkDiaryCron();
+
   } catch (err) {
     console.error("唤醒检查出错:", err);
   }
