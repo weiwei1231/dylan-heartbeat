@@ -475,11 +475,37 @@ app.post("/v1/chat/completions", async (req, reply) => {
       if (loopResult.error) {
         return reply.code(loopResult.status || 500).send(loopResult.body || "tool loop error");
       }
-      const finalData = loopResult.data;
+      const finalData = loopResult.data || {};
       const assistantReply = finalData.choices?.[0]?.message?.content || "";
       if (assistantReply && lastUserText) {
         setImmediate(() => { extractMemoryAsync(lastUserText, assistantReply).catch(err => console.error("[Memory] 异步提取失败:", err.message)); });
       }
+
+      // 前端默认以 stream=true 调用网关。tool loop 为保证工具调用稳定会先用
+      // 非流式方式向上游请求，但最终仍要给前端一个合法的 SSE 响应，否则
+      // 请求成功却会出现“没有回复”的空白气泡。
+      if (requestedStream) {
+        reply.raw.writeHead(200, {
+          "Content-Type": "text/event-stream; charset=utf-8",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive"
+        });
+        const content = assistantReply || "";
+        if (content) {
+          const chunk = {
+            id: finalData.id || `chatcmpl-${Date.now()}`,
+            object: "chat.completion.chunk",
+            created: finalData.created || Math.floor(Date.now() / 1000),
+            model: finalData.model || configuredModelName(),
+            choices: [{ index: 0, delta: { role: "assistant", content }, finish_reason: null }]
+          };
+          reply.raw.write(`data: ${JSON.stringify(chunk)}\n\n`);
+        }
+        reply.raw.write("data: [DONE]\n\n");
+        reply.raw.end();
+        return;
+      }
+
       return reply.header("Content-Type", "application/json").send(JSON.stringify(finalData));
     }
 

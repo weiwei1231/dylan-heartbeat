@@ -69,10 +69,17 @@ if(cmds&&cmds.trim()){apiMessages.unshift({role:'system',content:cmds.trim()});}
 try{var response=await fetch('/v1/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+apiKey,'Content-Type':'application/json'},body:JSON.stringify({model:'kei',messages:apiMessages,stream:true})});
 if(response.status===401){localStorage.removeItem(STORAGE_KEY);renderError('\u5bc6\u94a5\u5df2\u5931\u6548');showLockView();return;}
 if(!response.ok){var errText=await response.text();throw new Error(errText||('HTTP '+response.status));}
-var reader=response.body.getReader(),decoder=new TextDecoder(),fullContent='',buffer='';
-while(true){var result=await reader.read();if(result.done)break;buffer+=decoder.decode(result.value,{stream:true});var lines=buffer.split('\n');buffer=lines.pop()||'';
-for(var i=0;i<lines.length;i++){var line=lines[i].trim();if(line.startsWith('data: ')){var dataStr=line.slice(6).trim();if(dataStr==='[DONE]')break;
-try{var parsed=JSON.parse(dataStr);var delta=parsed.choices&&parsed.choices[0]&&parsed.choices[0].delta&&parsed.choices[0].delta.content||'';if(delta){fullContent+=delta;aiBubble.textContent=fullContent;scrollToBottom();}}catch(e){}}}}
+var contentType=response.headers.get('content-type')||'',fullContent='';
+if(contentType.includes('application/json')){
+  var parsedJson=await response.json();
+  fullContent=parsedJson.choices&&parsedJson.choices[0]&&parsedJson.choices[0].message&&parsedJson.choices[0].message.content||'';
+  if(fullContent){aiBubble.textContent=fullContent;scrollToBottom();}
+}else{
+  var reader=response.body.getReader(),decoder=new TextDecoder(),buffer='';
+  while(true){var result=await reader.read();if(result.done)break;buffer+=decoder.decode(result.value,{stream:true});var lines=buffer.split('\n');buffer=lines.pop()||'';
+  for(var i=0;i<lines.length;i++){var line=lines[i].trim();if(line.startsWith('data: ')){var dataStr=line.slice(6).trim();if(dataStr==='[DONE]')break;
+  try{var parsed=JSON.parse(dataStr);var delta=parsed.choices&&parsed.choices[0]&&parsed.choices[0].delta&&parsed.choices[0].delta.content||'';if(delta){fullContent+=delta;aiBubble.textContent=fullContent;scrollToBottom();}}catch(e){}}}}
+}
 if(fullContent){historyList.push({role:'ai',content:fullContent,time:aiTime});saveHistory();}}
 catch(err){renderError(err.message||'\u7f51\u7edc\u9519\u8bef');}
 finally{isGenerating=false;sendBtn.disabled=!textarea.value.trim();}}
