@@ -37,3 +37,12 @@ test("preserves trusted LAN access for non-Railway deployments", () => {
 test("lets the legacy test route reach its own admin authentication", () => {
   assert.equal(decide({ path: "/test-bark", ip: "10.0.0.8" }).allow, true);
 });
+
+test("allows anonymous GET on public read APIs but blocks anonymous writes", () => {
+  assert.equal(decide({ path: "/api/home", method: "GET", ip: "1.2.3.4" }).allow, true);
+  assert.equal(decide({ path: "/api/home", method: "POST", ip: "1.2.3.4" }).allow, false);
+  assert.equal(
+    decide({ path: "/api/home", method: "POST", ip: "1.2.3.4", allowPublicApi: true, authorization: "Bearer gateway-test-key" }).allow,
+    true
+  );
+});
