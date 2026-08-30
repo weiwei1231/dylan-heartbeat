@@ -19,6 +19,7 @@ const {
 } = require("./time_utils");
 const { kelivoCompat } = require("./kelivo_compat");
 const { getInjectedMemoryPrompt, extractMemoryAsync } = require("./memory_system");
+const { registerChatRoutes, injectSystemPrompt } = require("./chat_routes");
 
 const DEFAULT_BODY_LIMIT_MB = 50;
 
@@ -351,6 +352,11 @@ app.addHook("onRequest", (req, reply, done) => {
   reply.code(access.status || 403).send(access.status === 401 ? { error: access.error } : access.error);
 });
 
+// ========================
+// kc 前端路由
+// ========================
+registerChatRoutes(app);
+
 app.get("/healthz", async () => ({ status: "ok" }));
 
 app.get("/v1/models", async (req, reply) => {
@@ -403,6 +409,9 @@ app.post("/v1/chat/completions", async (req, reply) => {
       }
       if (!inserted) llmMessages.push(event);
     }
+
+    // ===== System Prompt 注入：始终使用后端管理的 prompt =====
+    injectSystemPrompt(llmMessages);
 
     // ===== 记忆注入层 =====
     const memoryContext = getInjectedMemoryPrompt();
