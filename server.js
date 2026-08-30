@@ -21,6 +21,8 @@ const { kelivoCompat } = require("./kelivo_compat");
 const { getInjectedMemoryPrompt, extractMemoryAsync } = require("./memory_system");
 const { registerChatRoutes, injectSystemPrompt, buildUpstreamBody } = require("./chat_routes");const { hasTools, getToolDeclarations, handleToolCalls } = require("./tool_runner");
 require("./garden_tools").initGardenTools();
+const { runToolLoop } = require("./tool_loop");
+
 
 
 const DEFAULT_BODY_LIMIT_MB = 50;
@@ -480,7 +482,31 @@ if (hasTools()) { upstreamBody.tools = getToolDeclarations(); }
           setImmediate(() => { extractMemoryAsync(lastUserText, assistantReply).catch(err => console.error("[Memory] 异步提取失败:", err.message)); });
         }
       } catch {}
+       if (!shouldStreamResponse || hasTools()) {
+      // 有工具时强制走非流式 tool loop
+      if (hasTools()) {
+        const loopResult = await runToolLoop(TARGET_API_URL, process.env.TARGET_API_KEY, upstreamBody);
+        if (loopResult.error) {
+          return reply.code(loopResult.status || 500).send(loopResult.body || "tool loop error");
+        }
+        const finalData = loopResult.data;
+        const assistantReply = finalData.choices && finalData.choices[0] && finalData.choices[0].message && finalData.choices[0].message.content || "";
+        if (assistantReply && lastUserText) {
+          setImmediate(() => { extractMemoryAsync(lastUserText, assistantReply).catch(err => console.error("[Memory] 异步提取失败:", err.message)); });
+        }
+        return reply.header("Content-Type", "application/json").send(JSON.stringify(finalData));
+      }
+      const responseText = await response.text();
+      try {
+        const parsed = JSON.parse(responseText);
+        const assistantReply = parsed.choices?.[0]?.message?.content || "";
+        if (assistantReply && lastUserText) {
+          setImmediate(() => { extractMemoryAsync(lastUserText, assistantReply).catch(err => console.error("[Memory] 异步提取失败:", err.message)); });
+        }
+      } catch {}
       return reply.code(response.status).header("Content-Type", upstreamContentType || "application/json").send(responseText);
+    }
+
     }
 
     if (!response.body) {
