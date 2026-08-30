@@ -15,7 +15,6 @@ body{background:linear-gradient(135deg,#e8f5e9 0%,#fce4ec 100%);font-family:-app
 .tab-content{display:none!important;width:100%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .tab-content.active{display:flex!important;flex-direction:column}
 .glass-card{background:rgba(255,255,255,0.7);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-radius:18px;padding:16px;border:1px solid rgba(255,255,255,0.8);box-shadow:0 4px 15px rgba(0,0,0,0.02)}
-/* Home / 小窝 */
 #tab-home{padding:16px;gap:16px}
 .home-header{display:flex;justify-content:space-between;align-items:center;padding:0 4px}
 .home-header h2{font-size:22px;color:#333}
@@ -50,7 +49,6 @@ body{background:linear-gradient(135deg,#e8f5e9 0%,#fce4ec 100%);font-family:-app
 .note-input-field{flex:1;background:rgba(255,255,255,0.9);border:1px solid rgba(0,0,0,0.06);border-radius:18px;padding:6px 12px;font-size:13px;outline:none;color:#333;font-family:inherit}
 .note-input-field:focus{border-color:#f06292}
 .note-send-btn{width:28px;height:28px;border-radius:50%;background:#f06292;border:none;color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
-/* Album */
 .album-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
 .album-thumb{width:100%;aspect-ratio:1;border-radius:10px;overflow:hidden;cursor:pointer}
 .album-thumb img{width:100%;height:100%;object-fit:cover}
@@ -62,7 +60,7 @@ body{background:linear-gradient(135deg,#e8f5e9 0%,#fce4ec 100%);font-family:-app
 .func-icon{width:52px;height:52px;border-radius:16px;background:rgba(255,255,255,0.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 2px 8px rgba(0,0,0,0.04);border:1px solid rgba(255,255,255,0.8)}
 .func-label{font-size:11px;color:#555}
 /* Sub pages */
-.sub-page{}
+.sub-page{position:relative}
 .sub-header{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;background:rgba(255,255,255,0.5);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,0.6);flex-shrink:0;font-size:15px;font-weight:600;color:#333}
 .back-btn{background:none;border:none;font-size:24px;color:#333;cursor:pointer;padding:0 4px;line-height:1}
 /* Diary */
@@ -86,14 +84,20 @@ body{background:linear-gradient(135deg,#e8f5e9 0%,#fce4ec 100%);font-family:-app
 .msg-row.user .msg-bubble{background-color:#f8bbd0;color:#333;border-radius:14px;border-bottom-right-radius:4px}
 .msg-row.ai .msg-bubble{background:rgba(255,255,255,0.85);color:#333;border-radius:14px;border-bottom-left-radius:4px;border:1px solid rgba(255,255,255,0.9)}
 .msg-time{font-size:10px;color:#999;margin-top:2px}
-.chat-input-area{padding:6px 10px;background:rgba(255,255,255,0.6);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,0.6);display:flex;align-items:flex-end;gap:8px;flex-shrink:0}
+.chat-input-area{padding:6px 10px;background:rgba(255,255,255,0.6);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,0.6);display:flex;align-items:flex-end;gap:6px;flex-shrink:0}
+.chat-plus-btn{width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,0.06);border:none;color:#555;font-size:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;line-height:1}
 .chat-textarea{flex:1;background:rgba(255,255,255,0.9);border:1px solid rgba(0,0,0,0.05);border-radius:18px;padding:8px 14px;color:#333;font-size:14px;line-height:20px;max-height:120px;resize:none;outline:none;font-family:inherit}
 .chat-textarea:focus{border-color:#f06292}
 .chat-send-btn{width:34px;height:34px;border-radius:50%;background:#f06292;border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;margin-bottom:1px;box-shadow:0 2px 6px rgba(240,98,146,0.3)}
 .chat-send-btn:disabled{background:#ccc;box-shadow:none;cursor:not-allowed}
+/* Chat menu */
+.chat-menu{display:none;padding:12px;background:rgba(255,255,255,0.8);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,0.6);flex-shrink:0}
+.chat-menu.open{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.chat-menu-item{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:#555}
+.chat-menu-icon{width:44px;height:44px;border-radius:12px;background:rgba(0,0,0,0.04);display:flex;align-items:center;justify-content:center;font-size:20px}
 .placeholder-view{flex:1;display:flex;justify-content:center;align-items:center;color:#888;font-size:14px}
 .error-msg{align-self:center;color:#e53935;font-size:12px;margin:4px 0;text-align:center}
-/* Tab bar - 3 tabs */
+/* Tab bar */
 .tab-bar{height:52px;min-height:52px;background:rgba(255,255,255,0.7);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);border-top:1px solid rgba(255,255,255,0.8);display:flex;position:relative;flex-shrink:0}
 .tab-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;color:#888;cursor:pointer;gap:2px}
 .tab-item.active{color:#f06292;font-weight:600}
