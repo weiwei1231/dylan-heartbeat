@@ -38,4 +38,15 @@ function injectSystemPrompt(llmMessages) {
   }
 }
 
-module.exports = { registerChatRoutes, injectSystemPrompt };
+/**
+ * 构建发给上游的请求 body，替换 model 为后端配置的 MODEL_NAME
+ * @param {Object} originalBody - 客户端发来的原始请求体
+ * @param {Array} llmMessages - 处理后的消息数组
+ * @returns {Object} 发给上游的请求体
+ */
+function buildUpstreamBody(originalBody, llmMessages) {
+  const modelName = String(process.env.MODEL_NAME || "gateway-model").trim() || "gateway-model";
+  return { ...originalBody, model: modelName, messages: llmMessages };
+}
+
+module.exports = { registerChatRoutes, injectSystemPrompt, buildUpstreamBody };
