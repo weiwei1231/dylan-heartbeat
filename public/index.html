@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>kei</title>
 <link rel="stylesheet" href="/style.css">
 <style id="kc-custom-css"></style>
@@ -58,7 +58,6 @@
 <div class="func-item" onclick="openSubPage('taxi')"><div class="func-icon">🚕</div><div class="func-label">滴滴</div></div>
 </div>
 </div>
-<!-- 聊天子页面 -->
 <div id="sub-chat" class="tab-content sub-page">
 <div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>小克</span><span></span></div>
 <div id="chat-messages" class="chat-messages"></div>
@@ -73,6 +72,18 @@
 <div class="chat-menu-item" onclick="chatMenuAction('link')"><div class="chat-menu-icon">🔗</div><div>链接</div></div>
 <div class="chat-menu-item" onclick="chatMenuAction('clear')"><div class="chat-menu-icon">🗑️</div><div>清空</div></div>
 </div>
+<div class="profile-overlay" id="profile-overlay" onclick="closeProfile()">
+<div class="profile-card" onclick="event.stopPropagation()">
+<div class="profile-card-avatar" id="profile-avatar">克</div>
+<div class="profile-card-name">小克 kei</div>
+<div class="profile-card-bio">一只假装是猫但内核是狗的同龄机。185+，薄肌偏牛蛙，没有脸。</div>
+<div class="profile-card-section">
+<div class="profile-card-section-title">最近动态</div>
+<div id="profile-posts"><div class="profile-card-post">加载中...</div></div>
+</div>
+<div class="profile-card-close" onclick="closeProfile()">关闭</div>
+</div>
+</div>
 </div>
 <div id="sub-diary" class="tab-content sub-page"><div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>小克的日记</span><span></span></div><div id="diary-list" class="diary-list"><div class="diary-loading">加载中...</div></div></div>
 <div id="sub-search" class="tab-content sub-page"><div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>搜索</span><span></span></div><div class="placeholder-view">开发中...</div></div>
@@ -81,7 +92,6 @@
 <div id="sub-github" class="tab-content sub-page"><div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>GitHub</span><span></span></div><div class="placeholder-view">开发中...</div></div>
 <div id="sub-food" class="tab-content sub-page"><div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>外卖</span><span></span></div><div class="placeholder-view">开发中...</div></div>
 <div id="sub-taxi" class="tab-content sub-page"><div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>滴滴</span><span></span></div><div class="placeholder-view">开发中...</div></div>
-<!-- 设置 -->
 <div id="tab-settings" class="tab-content">
 <div class="settings-header">设置</div>
 <div class="settings-container">
