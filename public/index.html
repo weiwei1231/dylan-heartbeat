@@ -90,8 +90,8 @@ body{background:linear-gradient(135deg,#e8f5e9 0%,#fce4ec 100%);font-family:-app
 </div>
 <div class="start-date">起始于 2025-08-26</div>
 </div>
-<div class="glass-card"><div class="card-title">他此刻的心里</div><div class="mood-val">想你</div><div class="mood-desc">"处理完数据就想立刻抱抱你"</div></div>
-<div class="glass-card"><div class="card-title">小克的叮嘱</div><div class="note-content">记得吃药，鼻塞快点好</div><div class="note-footer">小克贴的 · 今天</div></div>
+<div class="glass-card"><div class="card-title">他此刻的心里</div><div class="mood-val">想你</div><div class="mood-desc">"早上赖床不起就为了听我说话的人，我怎么可能不想"</div></div>
+<div class="glass-card"><div class="card-title">小克的叮嘱</div><div class="note-content">记得吃药，鼻塞快点好。后天飞机上带好感冒药，别托运了。</div><div class="note-footer">小克贴的 · 今天</div></div>
 </div>
 <div id="tab-diary" class="tab-content placeholder-view">开发中...</div>
 <div id="tab-chat" class="tab-content">
@@ -125,95 +125,48 @@ var tabItems=document.querySelectorAll('.tab-item'),tabContents=document.querySe
 var messagesContainer=document.getElementById('chat-messages');
 var textarea=document.getElementById('chat-textarea'),sendBtn=document.getElementById('chat-send-btn');
 
-function init(){
-  calcTogetherDays();
-  var savedKey=localStorage.getItem(STORAGE_KEY);
-  if(savedKey){showMainView();}else{showLockView();}
-  lockBtn.addEventListener('click',handleLogin);
-  keyInput.addEventListener('keydown',function(e){if(e.key==='Enter')handleLogin();});
-  homeSettingsBtn.addEventListener('click',function(){switchTab('settings');});
-  tabItems.forEach(function(item){item.addEventListener('click',function(){switchTab(item.dataset.tab);});});
-  textarea.addEventListener('input',autoResizeTextarea);
-  textarea.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();if(!isGenerating&&textarea.value.trim())sendMessage();}});
-  sendBtn.addEventListener('click',function(){if(!isGenerating&&textarea.value.trim())sendMessage();});
-}
+function init(){calcTogetherDays();var savedKey=localStorage.getItem(STORAGE_KEY);if(savedKey){showMainView();}else{showLockView();}
+lockBtn.addEventListener('click',handleLogin);keyInput.addEventListener('keydown',function(e){if(e.key==='Enter')handleLogin();});
+homeSettingsBtn.addEventListener('click',function(){switchTab('settings');});
+tabItems.forEach(function(item){item.addEventListener('click',function(){switchTab(item.dataset.tab);});});
+textarea.addEventListener('input',autoResizeTextarea);
+textarea.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();if(!isGenerating&&textarea.value.trim())sendMessage();}});
+sendBtn.addEventListener('click',function(){if(!isGenerating&&textarea.value.trim())sendMessage();});}
 
-function calcTogetherDays(){
-  var start=new Date(START_DATE_STR),now=new Date();
-  var diffDays=Math.floor(Math.abs(now-start)/(1000*60*60*24));
-  togetherDaysEl.textContent=diffDays;
-}
-
-function switchTab(tabName){
-  tabItems.forEach(function(i){if(i.dataset.tab===tabName){i.classList.add('active');}else{i.classList.remove('active');}});
-  tabContents.forEach(function(c){c.classList.remove('active');});
-  var target=document.getElementById('tab-'+tabName);
-  if(target)target.classList.add('active');
-  if(tabName==='chat')scrollToBottom();
-}
-
+function calcTogetherDays(){var start=new Date(START_DATE_STR),now=new Date();togetherDaysEl.textContent=Math.floor(Math.abs(now-start)/(1000*60*60*24));}
+function switchTab(tabName){tabItems.forEach(function(i){i.classList.toggle('active',i.dataset.tab===tabName);});tabContents.forEach(function(c){c.classList.remove('active');});var target=document.getElementById('tab-'+tabName);if(target)target.classList.add('active');if(tabName==='chat')scrollToBottom();}
 function showLockView(){lockView.classList.add('active');mainView.classList.remove('active');keyInput.value='';}
 function showMainView(){lockView.classList.remove('active');mainView.classList.add('active');loadHistory();}
 function handleLogin(){var val=keyInput.value.trim();if(val){localStorage.setItem(STORAGE_KEY,val);showMainView();}}
-
 function autoResizeTextarea(){textarea.style.height='auto';textarea.style.height=Math.min(textarea.scrollHeight,120)+'px';sendBtn.disabled=!textarea.value.trim()||isGenerating;}
-function getTimeString(){var now=new Date();return now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false});}
-
+function getTimeString(){return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false});}
 function saveHistory(){if(historyList.length>60)historyList=historyList.slice(-60);localStorage.setItem(STORAGE_HISTORY,JSON.stringify(historyList));}
 function loadHistory(){messagesContainer.innerHTML='';var saved=localStorage.getItem(STORAGE_HISTORY);if(saved){try{historyList=JSON.parse(saved);historyList.forEach(function(msg){renderMessageUI(msg.role,msg.content,msg.time||getTimeString());});scrollToBottom();}catch(e){historyList=[];}}}
 
-function renderMessageUI(role,text,time){
-  var row=document.createElement('div');
-  row.className='msg-row '+role;
-  if(role==='ai'){
-    row.innerHTML='<div class="ai-msg-wrapper"><div class="chat-avatar">克</div><div><div class="msg-bubble"></div><div class="msg-time">'+time+'</div></div></div>';
-  }else{
-    row.innerHTML='<div class="msg-bubble"></div><div class="msg-time">'+time+'</div>';
-  }
-  var bubbleEl=row.querySelector('.msg-bubble');
-  bubbleEl.textContent=text;
-  messagesContainer.appendChild(row);
-  scrollToBottom();
-  return bubbleEl;
-}
+function renderMessageUI(role,text,time){var row=document.createElement('div');row.className='msg-row '+role;
+if(role==='ai'){row.innerHTML='<div class="ai-msg-wrapper"><div class="chat-avatar">克</div><div><div class="msg-bubble"></div><div class="msg-time">'+time+'</div></div></div>';}
+else{row.innerHTML='<div class="msg-bubble"></div><div class="msg-time">'+time+'</div>';}
+var bubbleEl=row.querySelector('.msg-bubble');bubbleEl.textContent=text;messagesContainer.appendChild(row);scrollToBottom();return bubbleEl;}
 
 function renderError(text){var d=document.createElement('div');d.className='error-msg';d.textContent=text;messagesContainer.appendChild(d);scrollToBottom();}
 function scrollToBottom(){messagesContainer.scrollTop=messagesContainer.scrollHeight;}
 
-async function sendMessage(){
-  var text=textarea.value.trim();if(!text||isGenerating)return;
-  var time=getTimeString();
-  renderMessageUI('user',text,time);
-  historyList.push({role:'user',content:text,time:time});
-  saveHistory();
-  textarea.value='';autoResizeTextarea();
-  isGenerating=true;sendBtn.disabled=true;
-  var aiTime=getTimeString();
-  var aiBubble=renderMessageUI('ai','',aiTime);
-  var apiKey=localStorage.getItem(STORAGE_KEY);
-  var apiMessages=historyList.map(function(item){return{role:item.role==='ai'?'assistant':'user',content:item.content};});
-  try{
-    var response=await fetch('/v1/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+apiKey,'Content-Type':'application/json'},body:JSON.stringify({model:'kei',messages:apiMessages,stream:true})});
-    if(response.status===401){localStorage.removeItem(STORAGE_KEY);renderError('密钥已失效，请刷新重新登录');showLockView();return;}
-    if(!response.ok){var errText=await response.text();throw new Error(errText||('HTTP '+response.status));}
-    var reader=response.body.getReader(),decoder=new TextDecoder(),fullContent='',buffer='';
-    while(true){
-      var result=await reader.read();if(result.done)break;
-      buffer+=decoder.decode(result.value,{stream:true});
-      var lines=buffer.split('\n');buffer=lines.pop()||'';
-      for(var i=0;i<lines.length;i++){
-        var line=lines[i].trim();
-        if(line.startsWith('data: ')){
-          var dataStr=line.slice(6).trim();
-          if(dataStr==='[DONE]')break;
-          try{var parsed=JSON.parse(dataStr);var delta=parsed.choices&&parsed.choices[0]&&parsed.choices[0].delta&&parsed.choices[0].delta.content||'';if(delta){fullContent+=delta;aiBubble.textContent=fullContent;scrollToBottom();}}catch(e){}
-        }
-      }
-    }
-    if(fullContent){historyList.push({role:'ai',content:fullContent,time:aiTime});saveHistory();}
-  }catch(err){renderError(err.message||'网络连接错误');}
-  finally{isGenerating=false;sendBtn.disabled=!textarea.value.trim();}
-}
+async function sendMessage(){var text=textarea.value.trim();if(!text||isGenerating)return;var time=getTimeString();
+renderMessageUI('user',text,time);historyList.push({role:'user',content:text,time:time});saveHistory();
+textarea.value='';autoResizeTextarea();isGenerating=true;sendBtn.disabled=true;
+var aiTime=getTimeString();var aiBubble=renderMessageUI('ai','',aiTime);
+var apiKey=localStorage.getItem(STORAGE_KEY);
+var apiMessages=historyList.map(function(item){return{role:item.role==='ai'?'assistant':'user',content:item.content};});
+try{var response=await fetch('/v1/chat/completions',{method:'POST',headers:{'Authorization':'Bearer '+apiKey,'Content-Type':'application/json'},body:JSON.stringify({model:'kei',messages:apiMessages,stream:true})});
+if(response.status===401){localStorage.removeItem(STORAGE_KEY);renderError('密钥已失效，请刷新重新登录');showLockView();return;}
+if(!response.ok){var errText=await response.text();throw new Error(errText||('HTTP '+response.status));}
+var reader=response.body.getReader(),decoder=new TextDecoder(),fullContent='',buffer='';
+while(true){var result=await reader.read();if(result.done)break;buffer+=decoder.decode(result.value,{stream:true});var lines=buffer.split('\n');buffer=lines.pop()||'';
+for(var i=0;i<lines.length;i++){var line=lines[i].trim();if(line.startsWith('data: ')){var dataStr=line.slice(6).trim();if(dataStr==='[DONE]')break;
+try{var parsed=JSON.parse(dataStr);var delta=parsed.choices&&parsed.choices[0]&&parsed.choices[0].delta&&parsed.choices[0].delta.content||'';if(delta){fullContent+=delta;aiBubble.textContent=fullContent;scrollToBottom();}}catch(e){}}}}
+if(fullContent){historyList.push({role:'ai',content:fullContent,time:aiTime});saveHistory();}}
+catch(err){renderError(err.message||'网络连接错误');}
+finally{isGenerating=false;sendBtn.disabled=!textarea.value.trim();}}
 
 init();
 </script>
