@@ -1,14 +1,15 @@
 /**
- * chat_routes.js — kc 独立前端路由 + system prompt 注入
+ * chat_routes.js — kc 独立前端路由 + system prompt 注入 + 日记API
  */
 
-const fs = require("fs");
-const path = require("path");
-const { loadSystemPrompt } = require("./system_prompt");
+var fs = require("fs");
+var path = require("path");
+var spMod = require("./system_prompt");
+var rtPaths = require("./runtime_paths");
 
-const PUBLIC_DIR = path.join(__dirname, "public");
+var PUBLIC_DIR = path.join(__dirname, "public");
 
-const MIME_TYPES = {
+var MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".js": "application/javascript; charset=utf-8",
@@ -19,9 +20,13 @@ const MIME_TYPES = {
   ".ico": "image/x-icon"
 };
 
+function getDiaryDir() {
+  var dirName = process.env.DIARY_DIR || "diary";
+  return rtPaths.runtimeDirectory(dirName, "diary");
+}
+
 function registerChatRoutes(app) {
-  // 聊天页面
-  app.get("/chat", async (req, reply) => {
+  app.get("/chat", async function(req, reply) {
     var htmlPath = path.join(PUBLIC_DIR, "index.html");
     try {
       var html = fs.readFileSync(htmlPath, "utf-8");
@@ -31,51 +36,49 @@ function registerChatRoutes(app) {
     }
   });
 
-  // 根路径重定向到聊天页
-  app.get("/", async (req, reply) => {
+  app.get("/", async function(req, reply) {
     reply.redirect("/chat");
   });
 
-  // 静态文件服务：/style.css, /app.js 等
-  app.get("/:filename", async (req, reply) => {
+  // 静态文件服务
+  app.get("/:filename", async function(req, reply) {
     var filename = req.params.filename;
     var ext = path.extname(filename).toLowerCase();
     var mime = MIME_TYPES[ext];
-    if (!mime) return; // 不认识的扩展名跳过，交给后续路由
+    if (!mime) return;
     var filePath = path.join(PUBLIC_DIR, filename);
-    // 防止路径穿越
-    if (!filePath.startsWith(PUBLIC_DIR)) {
-      reply.code(403).send("Forbidden");
-      return;
-    }
+    if (!filePath.startsWith(PUBLIC_DIR)) { reply.code(403).send("Forbidden"); return; }
+    try { var content = fs.readFileSync(filePath); reply.type(mime).send(content); } catch (err) {}
+  });
+
+  // 日记列表API
+  app.get("/api/diary", async function(req, reply) {
+    var dir = getDiaryDir();
     try {
-      var content = fs.readFileSync(filePath);
-      reply.type(mime).send(content);
+      if (!fs.existsSync(dir)) { reply.send({ entries: [] }); return; }
+      var files = fs.readdirSync(dir).filter(function(n) { return /^\d{4}-\d{2}-\d{2}\.md$/i.test(n); }).sort().reverse().slice(0, 30);
+      var entries = files.map(function(name) {
+        var filePath = path.join(dir, name);
+        var content = fs.readFileSync(filePath, "utf-8").slice(0, 10000);
+        return { date: name.replace(".md", ""), content: content };
+      });
+      reply.send({ entries: entries });
     } catch (err) {
-      // 文件不存在，不处理，让后续路由接手
+      reply.code(500).send({ error: err.message });
     }
   });
 }
 
-/**
- * 在发往上游之前，替换或插入后端管理的 system prompt
- */
 function injectSystemPrompt(llmMessages) {
-  var prompt = loadSystemPrompt();
+  var prompt = spMod.loadSystemPrompt();
   var idx = llmMessages.findIndex(function(m) { return m.role === "system"; });
-  if (idx !== -1) {
-    llmMessages[idx] = { role: "system", content: prompt };
-  } else {
-    llmMessages.unshift({ role: "system", content: prompt });
-  }
+  if (idx !== -1) { llmMessages[idx] = { role: "system", content: prompt }; }
+  else { llmMessages.unshift({ role: "system", content: prompt }); }
 }
 
-/**
- * 构建发给上游的请求 body，替换 model 为后端配置的 MODEL_NAME
- */
 function buildUpstreamBody(originalBody, llmMessages) {
   var modelName = String(process.env.MODEL_NAME || "gateway-model").trim() || "gateway-model";
   return Object.assign({}, originalBody, { model: modelName, messages: llmMessages });
 }
 
-module.exports = { registerChatRoutes, injectSystemPrompt, buildUpstreamBody };
+module.exports = { registerChatRoutes: registerChatRoutes, injectSystemPrompt: injectSystemPrompt, buildUpstreamBody: buildUpstreamBody };
