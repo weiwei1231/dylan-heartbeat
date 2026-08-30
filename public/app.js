@@ -126,6 +126,32 @@ function refreshSettingsData(){try{var h=JSON.parse(localStorage.getItem(STORAGE
 function checkAdminAuth(){var u=localStorage.getItem('kc_admin_user'),p=localStorage.getItem('kc_admin_pass');document.getElementById('admin-auth-panel').style.display=(!u||!p)?'block':'none';}
 function saveAdminAuth(){var u=document.getElementById('cfg-admin-user').value.trim(),p=document.getElementById('cfg-admin-pass').value.trim();if(u&&p){localStorage.setItem('kc_admin_user',u);localStorage.setItem('kc_admin_pass',p);document.getElementById('admin-auth-panel').style.display='none';}}
 function getAuthHeader(){var u=localStorage.getItem('kc_admin_user')||'',p=localStorage.getItem('kc_admin_pass')||'';return'Basic '+btoa(u+':'+p);}
+function fetchModelList(){
+  var tips=document.getElementById('model-list-tips');
+  var url=document.getElementById('cfg-target-url').value.trim();
+  var key=document.getElementById('cfg-target-key').value.trim();
+  var select=document.getElementById('cfg-model-list');
+  if(!url||!key){tips.className='setting-tips error';tips.textContent='请先填写中转站 URL 和 Key';tips.style.display='block';return;}
+  tips.className='setting-tips';tips.textContent='正在拉取...';tips.style.display='block';
+  fetch('/admin/models',{method:'POST',headers:{'Authorization':getAuthHeader(),'Content-Type':'application/json'},body:JSON.stringify({target_url:url,target_key:key})})
+    .then(function(r){return r.json().then(function(data){if(!r.ok)throw new Error(data.error||'拉取失败');return data;});})
+    .then(function(data){
+      var models=Array.isArray(data.data)?data.data:[];
+      select.innerHTML='';
+      if(!models.length)throw new Error('上游没有返回模型列表');
+      models.forEach(function(m){
+        var id=typeof m==='string'?m:(m&&m.id);
+        if(!id)return;
+        var opt=document.createElement('option');opt.value=id;opt.textContent=id;select.appendChild(opt);
+      });
+      select.style.display='block';
+      select.onchange=function(){document.getElementById('cfg-model-name').value=this.value;};
+      document.getElementById('cfg-model-name').value=select.value;
+      tips.className='setting-tips success';tips.textContent='已获取 '+models.length+' 个模型';tips.style.display='block';
+    })
+    .catch(function(err){tips.className='setting-tips error';tips.textContent=err.message||'拉取失败';tips.style.display='block';});
+}
+
 function saveApiConfig(){var url=document.getElementById('cfg-target-url').value,key=document.getElementById('cfg-target-key').value,model=document.getElementById('cfg-model-name').value;var tips=document.getElementById('api-save-tips');fetch('/admin/save',{method:'POST',headers:{'Content-Type':'application/json','Authorization':getAuthHeader()},body:JSON.stringify({target_url:url,target_key:key,model_name:model})}).then(function(r){if(r.ok){tips.className='setting-tips success';tips.textContent='\u5df2\u4fdd\u5b58';tips.style.display='block';setTimeout(function(){tips.style.display='none';},3000);}else throw new Error();}).catch(function(){tips.className='setting-tips error';tips.textContent='\u4fdd\u5b58\u5931\u8d25';tips.style.display='block';});}
 function testBarkPush(){var tips=document.getElementById('bark-tips');fetch('/admin/test-bark',{headers:{'Authorization':getAuthHeader()}}).then(function(r){if(r.ok){tips.className='setting-tips success';tips.textContent='\u63a8\u9001\u6210\u529f';}else throw new Error();tips.style.display='block';}).catch(function(){tips.className='setting-tips error';tips.textContent='\u63a8\u9001\u5931\u8d25';tips.style.display='block';});}
 function changeTheme(name){if(name==='lavender')document.body.style.background='linear-gradient(135deg,#e8e0f0 0%,#f3e5f5 100%)';else if(name==='warm')document.body.style.background='linear-gradient(135deg,#fff3e0 0%,#fce4ec 100%)';else document.body.style.background='';localStorage.setItem('kc_theme',name);document.querySelectorAll('.theme-btn').forEach(function(b){b.classList.remove('active');});var ab=document.querySelector('.theme-'+name);if(ab)ab.classList.add('active');var bg=localStorage.getItem('kc_bg_image');if(bg)applyBgImage(bg);}

@@ -12,6 +12,7 @@ const {
 } = require("./runtime_paths");
 const { isSpecialEventContent } = require("./special_events");
 const { decideRequestAccess } = require("./network_access");
+const { readEnvValue, readEnvBoolean } = require("./env_config");
 const {
   formatDateTimeInTimeZone,
   resolveTimeZone,
@@ -29,7 +30,7 @@ const { runToolLoop } = require("./tool_loop");
 const DEFAULT_BODY_LIMIT_MB = 50;
 
 function readBodyLimitBytes() {
-  const configured = Number(process.env.REQUEST_BODY_LIMIT_MB);
+  const configured = Number(readEnvValue("REQUEST_BODY_LIMIT_MB"));
   const mb = Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_BODY_LIMIT_MB;
   return Math.floor(mb * 1024 * 1024);
 }
@@ -41,8 +42,7 @@ const app = Fastify({
 
 app.register(require("@fastify/formbody"));
 
-const PORT = Number(process.env.PORT) || 3000;
-const TARGET_API_URL = process.env.TARGET_API_URL;
+const PORT = Number(readEnvValue("PORT")) || 3000;
 const TIME_ZONE = resolveTimeZone();
 const IS_RAILWAY_RUNTIME = Boolean(
   process.env.RAILWAY_ENVIRONMENT ||
@@ -55,17 +55,17 @@ const TIMESTAMP_DB_FILE = runtimeFile("message_timestamps.json");
 const DEFAULT_RESTART_COMMAND = "pm2 restart gateway wake-up --update-env";
 
 function readBooleanEnv(key, fallback = false) {
-  const raw = String(process.env[key] ?? "").trim().toLowerCase();
+  const raw = String(readEnvValue(key)).trim().toLowerCase();
   if (!raw) return fallback;
   return ["1", "true", "yes", "on"].includes(raw);
 }
 
 function configuredModelName() {
-  return String(process.env.MODEL_NAME || "gateway-model").trim() || "gateway-model";
+  return String(readEnvValue("MODEL_NAME") || "gateway-model").trim() || "gateway-model";
 }
 
 function shouldForwardMultimodalContent() {
-  const mode = (process.env.MULTIMODAL_MODE || "passthrough").trim().toLowerCase();
+  const mode = (readEnvValue("MULTIMODAL_MODE") || "passthrough").trim().toLowerCase();
   return !["text", "plain", "placeholder", "false", "off", "0"].includes(mode);
 }
 
@@ -453,7 +453,9 @@ app.post("/v1/chat/completions", async (req, reply) => {
     }
     for (const idx of Array.from(removeSet).sort((a, b) => b - a)) { llmMessages.splice(idx, 1); }
 
-    if (!TARGET_API_URL || !process.env.TARGET_API_KEY) {
+    const upstreamUrl = readEnvValue("TARGET_API_URL").trim();
+    const upstreamKey = readEnvValue("TARGET_API_KEY").trim();
+    if (!upstreamUrl || !upstreamKey) {
       return reply.code(500).send({ error: "TARGET_API_URL / TARGET_API_KEY 未配置" });
     }
 
@@ -469,7 +471,7 @@ app.post("/v1/chat/completions", async (req, reply) => {
     // （原逻辑会先在这里 fetch 一次、再在 runToolLoop 里重复 fetch 一次，
     //   等于每次工具调用都白白多打一次上游 API；现在提前分流，避免重复请求。）
     if (hasTools()) {
-      const loopResult = await runToolLoop(TARGET_API_URL, process.env.TARGET_API_KEY, upstreamBody);
+      const loopResult = await runToolLoop(upstreamUrl, upstreamKey, upstreamBody);
       if (loopResult.error) {
         return reply.code(loopResult.status || 500).send(loopResult.body || "tool loop error");
       }
@@ -482,9 +484,9 @@ app.post("/v1/chat/completions", async (req, reply) => {
     }
 
     // ---- 没有工具：正常请求一次上游 ----
-    const response = await fetch(TARGET_API_URL, {
+    const response = await fetch(upstreamUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.TARGET_API_KEY}` },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${upstreamKey}` },
       body: JSON.stringify(upstreamBody)
     });
 
@@ -567,14 +569,6 @@ app.post("/internal/wake-event", async (req, reply) => {
   } catch (err) { console.error(err); reply.code(500).send({ error: err.message }); }
 });
 
-function readEnvValue(key) {
-  if (IS_RAILWAY_RUNTIME && process.env[key]) return process.env[key];
-  try {
-    const lines = fs.readFileSync(ENV_FILE, "utf-8").split("\n");
-    for (const line of lines) { const trimmed = line.trim(); if (trimmed.startsWith(key + "=")) return trimmed.substring(key.length + 1).trim(); }
-  } catch {}
-  return process.env[key] || "";
-}
 
 function readEnvValueOrDefault(key, fallback) { const value = readEnvValue(key); return value === "" ? fallback : value; }
 function normalizePositiveInteger(value, key, fallback) { const n = Number(value); if (Number.isFinite(n) && n >= 1) return String(Math.floor(n)); return readEnvValueOrDefault(key, fallback); }
@@ -601,7 +595,7 @@ function basicAuth(req, reply, done) {
   if (scheme !== "Basic" || !encoded) { reply.code(401).header("WWW-Authenticate", 'Basic realm="Admin"').send("Unauthorized"); return; }
   const decoded = Buffer.from(encoded, "base64").toString();
   const colonIndex = decoded.indexOf(":");
-  if (decoded.substring(0, colonIndex) === process.env.ADMIN_USER && decoded.substring(colonIndex + 1) === process.env.ADMIN_PASSWORD) { done(); }
+  if (decoded.substring(0, colonIndex) === readEnvValue("ADMIN_USER") && decoded.substring(colonIndex + 1) === readEnvValue("ADMIN_PASSWORD")) { done(); }
   else { reply.code(401).header("WWW-Authenticate", 'Basic realm="Admin"').send("Unauthorized"); }
 }
 
@@ -609,6 +603,50 @@ app.get("/admin", { preHandler: basicAuth }, async (req, reply) => {
   const serverUptime = Math.floor(process.uptime());
   const wakeUpStatus = wakeUpLastHeartbeat ? `在线（上次心跳: ${formatDateTimeInTimeZone(new Date(wakeUpLastHeartbeat), TIME_ZONE)}）` : "离线或未启动";
   reply.type("text/html").send(`<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><title>HEARTBEAT</title></head><body><h2>HEARTBEAT Runtime</h2><p>Gateway 运行中 (${serverUptime}秒) | Wake-up: ${escapeHtml(wakeUpStatus)}</p><p><a href="/admin">刷新</a></p></body></html>`);
+});
+
+app.post("/admin/models", { preHandler: basicAuth }, async (req, reply) => {
+  try {
+    const body = req.body || {};
+    const baseUrl = String(body.target_url || readEnvValue("TARGET_API_URL")).trim().replace(/\/+$/, "");
+    const apiKey = String(body.target_key || readEnvValue("TARGET_API_KEY")).trim();
+
+    if (!baseUrl || !apiKey) {
+      return reply.code(400).send({ error: "请先填写中转站 URL / Key" });
+    }
+
+    let modelsUrl;
+    if (/\/v1\/chat\/completions$/i.test(baseUrl)) {
+      modelsUrl = baseUrl.replace(/\/chat\/completions$/i, "/models");
+    } else if (/\/v1$/i.test(baseUrl)) {
+      modelsUrl = `${baseUrl}/models`;
+    } else {
+      modelsUrl = `${baseUrl}/v1/models`;
+    }
+
+    const response = await fetch(modelsUrl, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${apiKey}`
+      },
+      signal: AbortSignal.timeout(15000)
+    });
+
+    const text = await response.text();
+    let payload;
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = { error: "上游 /v1/models 返回的不是有效 JSON", raw: text.slice(0, 4000) };
+    }
+
+    if (!response.ok) return reply.code(response.status).send(payload);
+    return reply.send(payload);
+  } catch (err) {
+    console.error("[Admin Models] 获取模型列表失败:", err);
+    return reply.code(502).send({ error: err.message || String(err) });
+  }
 });
 
 app.post("/admin/save", { preHandler: basicAuth }, async (req, reply) => {
@@ -645,7 +683,7 @@ app.post("/admin/restart", { preHandler: basicAuth }, async (req, reply) => {
 });
 
 app.get("/test-bark", { preHandler: basicAuth }, async (req, reply) => {
-  const barkKey = process.env.BARK_KEY;
+  const barkKey = readEnvValue("BARK_KEY");
   if (!barkKey) return reply.code(400).send({ error: "BARK_KEY 未配置" });
   const barkUrl = `https://api.day.app/${barkKey}/${encodeURIComponent("Bark 测试")}/${encodeURIComponent("如果你收到这条，说明推送通道正常。")}`;
   try {
@@ -657,7 +695,7 @@ app.get("/test-bark", { preHandler: basicAuth }, async (req, reply) => {
 });
 
 app.get("/admin/test-bark", { preHandler: basicAuth }, async (req, reply) => {
-  const barkKey = process.env.BARK_KEY;
+  const barkKey = readEnvValue("BARK_KEY");
   if (!barkKey) return reply.code(400).send({ error: "BARK_KEY 未配置" });
   const barkUrl = `https://api.day.app/${barkKey}/${encodeURIComponent("Bark 测试")}/${encodeURIComponent("如果你收到这条，说明推送通道正常。")}`;
   try {
@@ -670,6 +708,6 @@ app.get("/admin/test-bark", { preHandler: basicAuth }, async (req, reply) => {
 
 app.listen({ port: PORT, host: "0.0.0.0" }, (err, address) => {
   if (err) { console.error(err); process.exit(1); }
-  console.log(JSON.stringify({ event: "runtime_config_summary", railway: IS_RAILWAY_RUNTIME, persistent_data: Boolean(process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH), target_url_configured: Boolean(TARGET_API_URL), target_key_configured: Boolean(process.env.TARGET_API_KEY), model_configured: Boolean(process.env.MODEL_NAME), gateway_key_configured: Boolean(readEnvValue("GATEWAY_API_KEY")), data_dir_ready: fs.existsSync(DATA_DIR) }));
+  console.log(JSON.stringify({ event: "runtime_config_summary", railway: IS_RAILWAY_RUNTIME, persistent_data: Boolean(process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH), target_url_configured: Boolean(readEnvValue("TARGET_API_URL")), target_key_configured: Boolean(readEnvValue("TARGET_API_KEY")), model_configured: Boolean(readEnvValue("MODEL_NAME")), gateway_key_configured: Boolean(readEnvValue("GATEWAY_API_KEY")), data_dir_ready: fs.existsSync(DATA_DIR) }));
   console.log(`✅ Gateway 运行在 ${address}`);
 });

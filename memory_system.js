@@ -7,6 +7,7 @@ require("dotenv").config({ quiet: true });
 const fs = require("fs");
 const path = require("path");
 const { runtimeDirectory, runtimeFile } = require("./runtime_paths");
+const { readEnvValue, readEnvNumber } = require("./env_config");
 const {
   formatDateTimeInTimeZone,
   getDatePartsInTimeZone,
@@ -37,11 +38,11 @@ function getTodayString() {
 }
 
 function getMemoryModelName() {
-  return process.env.MEMORY_MODEL_NAME || process.env.MODEL_NAME || "claude-3-5-haiku-20241022";
+  return readEnvValue("MEMORY_MODEL_NAME") || readEnvValue("MODEL_NAME") || "claude-3-5-haiku-20241022";
 }
 
 function readPositiveInt(key, fallback) {
-  const n = Number(process.env[key]);
+  const n = Number(readEnvValue(key));
   return Number.isFinite(n) && n >= 1 ? Math.floor(n) : fallback;
 }
 
@@ -52,8 +53,8 @@ const MAX_RAW_ENTRIES_PER_DAY = readPositiveInt("MEMORY_MAX_RAW_PER_DAY", 100);
  * 调用上游 API（用 fetch，不依赖 OpenAI SDK）
  */
 async function callModelForMemory(messages, temperature = 0.1) {
-  const apiUrl = process.env.TARGET_API_URL;
-  const apiKey = process.env.TARGET_API_KEY;
+  const apiUrl = readEnvValue("TARGET_API_URL");
+  const apiKey = readEnvValue("TARGET_API_KEY");
   const model = getMemoryModelName();
 
   if (!apiUrl || !apiKey) {

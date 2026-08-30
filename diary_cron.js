@@ -9,16 +9,16 @@ const { runtimeDirectory, runtimeFile } = require("./runtime_paths");
 const { getHourInTimeZone, getDatePartsInTimeZone, formatDateTimeInTimeZone, resolveTimeZone } = require("./time_utils");
 const { getInjectedMemoryPrompt } = require("./memory_system");
 const { loadSystemPrompt } = require("./system_prompt");
+const { readEnvValue } = require("./env_config");
 
 const TIME_ZONE = resolveTimeZone();
 const DIARY_HOUR = 23;
 const DIARY_MINUTE = 30;
-const DIARY_DIR_NAME = process.env.DIARY_DIR || "diary";
 
 let lastDiaryDate = "";
 
 function getDiaryDirPath() {
-  return runtimeDirectory(DIARY_DIR_NAME, "diary");
+  return runtimeDirectory(readEnvValue("DIARY_DIR") || "diary", "diary");
 }
 
 function getTodayStr() {
@@ -41,7 +41,7 @@ function todayDiaryExists() {
 }
 
 async function writeDiary() {
-  if (!process.env.TARGET_API_URL || !process.env.TARGET_API_KEY || !process.env.MODEL_NAME) {
+  if (!readEnvValue("TARGET_API_URL") || !readEnvValue("TARGET_API_KEY") || !readEnvValue("MODEL_NAME")) {
     console.log("[DiaryCron] 缺少API配置，跳过日记");
     return;
   }
@@ -64,15 +64,15 @@ async function writeDiary() {
   ];
 
   try {
-    const response = await fetch(process.env.TARGET_API_URL, {
+    const response = await fetch(readEnvValue("TARGET_API_URL"), {
       method: "POST",
       signal: AbortSignal.timeout(120000),
       headers: {
         "Content-Type": "application/json",
-        "Authorization": "Bearer " + process.env.TARGET_API_KEY
+        "Authorization": "Bearer " + readEnvValue("TARGET_API_KEY")
       },
       body: JSON.stringify({
-        model: process.env.MODEL_NAME,
+        model: readEnvValue("MODEL_NAME"),
         messages: messages,
         temperature: 0.8,
         stream: false
