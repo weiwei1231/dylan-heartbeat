@@ -3,37 +3,34 @@ function normalizedIp(value) {
 }
 
 function isLoopbackIp(value) {
-  const ip = normalizedIp(value);
+  var ip = normalizedIp(value);
   return ip === "127.0.0.1" || ip === "::1" || ip === "localhost";
 }
 
 function isPrivateIp(value) {
-  const ip = normalizedIp(value);
+  var ip = normalizedIp(value);
   return isLoopbackIp(ip) || /^(?:10\.|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.)/.test(ip);
 }
 
-function decideRequestAccess({
-  path,
-  ip,
-  isRailway,
-  allowPublicApi,
-  configuredKey,
-  authorization,
-  headerKey
-}) {
-  const requestPath = String(path || "").split("?")[0];
+function isPublicStaticFile(requestPath) {
+  return /^\/(style\.css|app\.js|favicon\.ico|manifest\.json|icon[^/]*\.png)$/.test(requestPath);
+}
+
+function decideRequestAccess(opts) {
+  var requestPath = String(opts.path || "").split("?")[0];
   if (requestPath.startsWith("/admin") || requestPath === "/healthz" || requestPath === "/test-bark" || requestPath === "/chat" || requestPath === "/") return { allow: true };
+  if (isPublicStaticFile(requestPath)) return { allow: true };
 
   if (requestPath.startsWith("/internal/")) {
-    return isLoopbackIp(ip) ? { allow: true } : { allow: false, status: 403, error: "Forbidden" };
+    return isLoopbackIp(opts.ip) ? { allow: true } : { allow: false, status: 403, error: "Forbidden" };
   }
 
-  // 兼容 Kelivo 拼接错误：/v1chat/... 和 /v1models 也走公网鉴权
-  if (allowPublicApi && (requestPath.startsWith("/v1/") || requestPath.startsWith("/v1c") || requestPath.startsWith("/v1m"))) {
-    if (!configuredKey) return { allow: false, status: 401, error: "公网 /v1 已开启，但 GATEWAY_API_KEY 未配置", authRejected: true };
-    const bearer = String(authorization || "").match(/^Bearer\s+(.+)$/i)?.[1]?.trim() || "";
-    const alternate = String(headerKey || "").trim();
-    if (bearer === configuredKey || alternate === configuredKey) return { allow: true };
+  if (opts.allowPublicApi && (requestPath.startsWith("/v1/") || requestPath.startsWith("/v1c") || requestPath.startsWith("/v1m"))) {
+    if (!opts.configuredKey) return { allow: false, status: 401, error: "公网 /v1 已开启，但 GATEWAY_API_KEY 未配置", authRejected: true };
+    var bearer = String(opts.authorization || "").match(/^Bearer\s+(.+)$/i);
+    bearer = bearer ? bearer[1].trim() : "";
+    var alternate = String(opts.headerKey || "").trim();
+    if (bearer === opts.configuredKey || alternate === opts.configuredKey) return { allow: true };
     return {
       allow: false,
       status: 401,
@@ -43,8 +40,8 @@ function decideRequestAccess({
     };
   }
 
-  if (isLoopbackIp(ip) || (!isRailway && isPrivateIp(ip))) return { allow: true };
+  if (isLoopbackIp(opts.ip) || (!opts.isRailway && isPrivateIp(opts.ip))) return { allow: true };
   return { allow: false, status: 403, error: "Forbidden" };
 }
 
-module.exports = { decideRequestAccess, isLoopbackIp, isPrivateIp };
+module.exports = { decideRequestAccess: decideRequestAccess, isLoopbackIp: isLoopbackIp, isPrivateIp: isPrivateIp };
