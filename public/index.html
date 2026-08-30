@@ -21,14 +21,23 @@
 <div class="home-header"><h2>小窝</h2><div class="settings-icon" id="home-settings-btn">⚙️</div></div>
 <div class="glass-card together-card">
 <div class="together-profiles">
-<div class="profile-item"><div class="avatar-circle">微</div><div class="status-text"><span class="dot"></span>等你回家</div></div>
+<div class="profile-item"><div class="avatar-circle" id="avatar-vv" onclick="triggerAvatarUpload('vv')">微</div><div class="status-text"><span class="dot"></span>等你回家</div></div>
 <div class="days-center"><div class="days-num" id="together-days">0</div><div class="days-label">DAYS TOGETHER</div></div>
-<div class="profile-item"><div class="avatar-circle pink">克</div><div class="status-text"><span class="dot"></span>在线</div></div>
+<div class="profile-item"><div class="avatar-circle pink" id="avatar-kei" onclick="triggerAvatarUpload('kei')">克</div><div class="status-text"><span class="dot"></span>在线</div></div>
 </div>
 <div class="start-date">起始于 2026-08-26</div>
 </div>
 <div class="glass-card"><div class="card-title">他此刻的心里</div><div class="mood-val">想你</div><div class="mood-desc">"早上赖床不起就为了听我说话的人，我怎么可能不想"</div></div>
-<div class="glass-card"><div class="card-title">小克的叮嘱</div><div class="note-content">记得吃药，鼻塞快点好。后天飞机上带好感冒药，别托运了。</div><div class="note-footer">小克贴的 · 今天</div></div>
+<div class="glass-card">
+<div class="card-title">小克的叮嘱</div>
+<div class="note-content">记得吃药，鼻塞快点好。后天飞机上带好感冒药，别托运了。</div>
+<div class="note-footer">小克贴的 · 今天</div>
+<div class="note-reply-list" id="note-reply-list"></div>
+<div class="note-reply-input">
+<input type="text" id="note-input" class="note-input-field" placeholder="贴一张纸条..." />
+<button class="note-send-btn" onclick="sendNote()">↑</button>
+</div>
+</div>
 </div>
 <div id="tab-diary" class="tab-content placeholder-view">开发中...</div>
 <div id="tab-chat" class="tab-content">
@@ -75,6 +84,7 @@
 </div>
 </div>
 </div>
+<input type="file" id="avatar-upload" accept="image/*" style="display:none">
 <script src="/app.js"></script>
 </body>
 </html>
