@@ -19,7 +19,8 @@ const {
 } = require("./time_utils");
 const { kelivoCompat } = require("./kelivo_compat");
 const { getInjectedMemoryPrompt, extractMemoryAsync } = require("./memory_system");
-const { registerChatRoutes, injectSystemPrompt, buildUpstreamBody } = require("./chat_routes");const { hasTools, getToolDeclarations, handleToolCalls } = require("./tool_runner");
+const { registerChatRoutes, injectSystemPrompt, buildUpstreamBody } = require("./chat_routes");
+const { hasTools, getToolDeclarations, handleToolCalls } = require("./tool_runner");
 require("./garden_tools").initGardenTools();
 const { runToolLoop } = require("./tool_loop");
 
@@ -457,9 +458,30 @@ app.post("/v1/chat/completions", async (req, reply) => {
     }
 
     const requestedStream = body?.stream === true;
- const upstreamBody = buildUpstreamBody(body, llmMessages);
-if (hasTools()) { upstreamBody.tools = getToolDeclarations(); }
+    const upstreamBody = buildUpstreamBody(body, llmMessages);
+    if (hasTools()) { upstreamBody.tools = getToolDeclarations(); }
 
+    // 获取最后一条用户消息用于记忆提取
+    const lastUserMsg = kelivoMessages.filter(m => m.role === "user").slice(-1)[0];
+    const lastUserText = lastUserMsg ? normalizeContentToText(lastUserMsg.content) : "";
+
+    // ---- 有工具时：直接走非流式 tool loop，不发起下面的初始请求 ----
+    // （原逻辑会先在这里 fetch 一次、再在 runToolLoop 里重复 fetch 一次，
+    //   等于每次工具调用都白白多打一次上游 API；现在提前分流，避免重复请求。）
+    if (hasTools()) {
+      const loopResult = await runToolLoop(TARGET_API_URL, process.env.TARGET_API_KEY, upstreamBody);
+      if (loopResult.error) {
+        return reply.code(loopResult.status || 500).send(loopResult.body || "tool loop error");
+      }
+      const finalData = loopResult.data;
+      const assistantReply = finalData.choices?.[0]?.message?.content || "";
+      if (assistantReply && lastUserText) {
+        setImmediate(() => { extractMemoryAsync(lastUserText, assistantReply).catch(err => console.error("[Memory] 异步提取失败:", err.message)); });
+      }
+      return reply.header("Content-Type", "application/json").send(JSON.stringify(finalData));
+    }
+
+    // ---- 没有工具：正常请求一次上游 ----
     const response = await fetch(TARGET_API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.TARGET_API_KEY}` },
@@ -469,33 +491,8 @@ if (hasTools()) { upstreamBody.tools = getToolDeclarations(); }
     const upstreamContentType = response.headers.get("content-type") || "";
     const shouldStreamResponse = requestedStream || upstreamContentType.includes("text/event-stream");
 
-    // 获取最后一条用户消息用于记忆提取
-    const lastUserMsg = kelivoMessages.filter(m => m.role === "user").slice(-1)[0];
-    const lastUserText = lastUserMsg ? normalizeContentToText(lastUserMsg.content) : "";
-
     if (!shouldStreamResponse) {
-      const responseText = await response.text();
-      try {
-        const parsed = JSON.parse(responseText);
-        const assistantReply = parsed.choices?.[0]?.message?.content || "";
-        if (assistantReply && lastUserText) {
-          setImmediate(() => { extractMemoryAsync(lastUserText, assistantReply).catch(err => console.error("[Memory] 异步提取失败:", err.message)); });
-        }
-      } catch {}
-       if (!shouldStreamResponse || hasTools()) {
-      // 有工具时强制走非流式 tool loop
-      if (hasTools()) {
-        const loopResult = await runToolLoop(TARGET_API_URL, process.env.TARGET_API_KEY, upstreamBody);
-        if (loopResult.error) {
-          return reply.code(loopResult.status || 500).send(loopResult.body || "tool loop error");
-        }
-        const finalData = loopResult.data;
-        const assistantReply = finalData.choices && finalData.choices[0] && finalData.choices[0].message && finalData.choices[0].message.content || "";
-        if (assistantReply && lastUserText) {
-          setImmediate(() => { extractMemoryAsync(lastUserText, assistantReply).catch(err => console.error("[Memory] 异步提取失败:", err.message)); });
-        }
-        return reply.header("Content-Type", "application/json").send(JSON.stringify(finalData));
-      }
+      // 非流式：response.body 是一次性流，只能读一次
       const responseText = await response.text();
       try {
         const parsed = JSON.parse(responseText);
@@ -505,8 +502,6 @@ if (hasTools()) { upstreamBody.tools = getToolDeclarations(); }
         }
       } catch {}
       return reply.code(response.status).header("Content-Type", upstreamContentType || "application/json").send(responseText);
-    }
-
     }
 
     if (!response.body) {
