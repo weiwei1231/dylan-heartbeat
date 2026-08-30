@@ -2,6 +2,7 @@ var STORAGE_KEY='kc_key',STORAGE_HISTORY='kc_history',STORAGE_NOTES='kc_notes',S
 var historyList=[],isGenerating=false;
 var lockView,mainView,keyInput,lockBtn,togetherDaysEl,homeSettingsBtn,tabItems,tabContents,messagesContainer,textarea,sendBtn;
 var currentAvatarRole='';
+var diaryLoaded=false;
 
 function init(){
 lockView=document.getElementById('lock-view');mainView=document.getElementById('main-view');
@@ -27,7 +28,7 @@ initTheme();initAvatars();loadNotes();
 }
 
 function calcTogetherDays(){var start=new Date(START_DATE_STR),now=new Date();var d=Math.floor(Math.abs(now-start)/(1000*60*60*24));togetherDaysEl.textContent=d;var ad=document.getElementById('about-days');if(ad)ad.textContent=d;}
-function switchTab(tabName){tabItems.forEach(function(i){i.classList.toggle('active',i.dataset.tab===tabName);});tabContents.forEach(function(c){c.classList.remove('active');});var target=document.getElementById('tab-'+tabName);if(target)target.classList.add('active');if(tabName==='chat')scrollToBottom();}
+function switchTab(tabName){tabItems.forEach(function(i){i.classList.toggle('active',i.dataset.tab===tabName);});tabContents.forEach(function(c){c.classList.remove('active');});var target=document.getElementById('tab-'+tabName);if(target)target.classList.add('active');if(tabName==='chat')scrollToBottom();if(tabName==='diary'&&!diaryLoaded)loadDiary();}
 function showLockView(){lockView.classList.add('active');mainView.classList.remove('active');keyInput.value='';}
 function showMainView(){lockView.classList.remove('active');mainView.classList.add('active');loadHistory();}
 function handleLogin(){var val=keyInput.value.trim();if(val){localStorage.setItem(STORAGE_KEY,val);showMainView();}}
@@ -64,7 +65,24 @@ if(fullContent){historyList.push({role:'ai',content:fullContent,time:aiTime});sa
 catch(err){renderError(err.message||'\u7f51\u7edc\u8fde\u63a5\u9519\u8bef');}
 finally{isGenerating=false;sendBtn.disabled=!textarea.value.trim();}}
 
-/* Notes / sticky notes */
+/* Diary */
+function loadDiary(){
+var list=document.getElementById('diary-list');
+list.innerHTML='<div class="diary-loading">\u52a0\u8f7d\u4e2d...</div>';
+var apiKey=localStorage.getItem(STORAGE_KEY);
+fetch('/api/diary',{headers:{'Authorization':'Bearer '+apiKey}}).then(function(r){return r.json();}).then(function(data){
+list.innerHTML='';
+if(!data.entries||data.entries.length===0){list.innerHTML='<div class="diary-empty">\u8fd8\u6ca1\u6709\u65e5\u8bb0</div>';diaryLoaded=true;return;}
+data.entries.forEach(function(entry){
+var card=document.createElement('div');card.className='glass-card diary-card';
+var preview=entry.content.replace(/^#.*$/gm,'').trim().substring(0,120);
+card.innerHTML='<div class="diary-card-date">'+escapeHtml(entry.date)+'</div><div class="diary-card-preview">'+escapeHtml(preview)+'</div><div class="diary-full">'+escapeHtml(entry.content)+'</div>';
+card.addEventListener('click',function(){var full=card.querySelector('.diary-full');full.classList.toggle('open');var prev=card.querySelector('.diary-card-preview');prev.style.display=full.classList.contains('open')?'none':'';});
+list.appendChild(card);});
+diaryLoaded=true;
+}).catch(function(err){list.innerHTML='<div class="diary-empty">\u52a0\u8f7d\u5931\u8d25: '+escapeHtml(err.message)+'</div>';});}
+
+/* Notes */
 function loadNotes(){var list=document.getElementById('note-reply-list');list.innerHTML='';
 var notes=[];try{notes=JSON.parse(localStorage.getItem(STORAGE_NOTES)||'[]');}catch(e){}
 var recent=notes.slice(-10);
@@ -84,7 +102,7 @@ localStorage.setItem(STORAGE_NOTES,JSON.stringify(notes));input.value='';loadNot
 
 function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
-/* Avatar upload */
+/* Avatar */
 function triggerAvatarUpload(role){currentAvatarRole=role;document.getElementById('avatar-upload').click();}
 
 function handleAvatarFile(e){var file=e.target.files&&e.target.files[0];if(!file)return;
