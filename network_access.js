@@ -16,18 +16,26 @@ function isPublicStaticFile(requestPath) {
   return /^\/(style\.css|app\.js|favicon\.ico|manifest\.json|icon[^/]*\.png)$/.test(requestPath);
 }
 
+function isPublicApiRead(requestPath) {
+  return requestPath === "/api/home" || requestPath === "/api/diary";
+}
+
 function decideRequestAccess(opts) {
   var requestPath = String(opts.path || "").split("?")[0];
   if (requestPath.startsWith("/admin") || requestPath === "/healthz" || requestPath === "/test-bark" || requestPath === "/chat" || requestPath === "/") return { allow: true };
   if (isPublicStaticFile(requestPath)) return { allow: true };
+  if (isPublicApiRead(requestPath)) return { allow: true };
 
   if (requestPath.startsWith("/internal/")) {
     return isLoopbackIp(opts.ip) ? { allow: true } : { allow: false, status: 403, error: "Forbidden" };
   }
 
-  // /api/* and /v1/* require gateway key auth
+  if (requestPath === "/api/home" && opts.method === "POST") {
+    // POST /api/home needs admin auth — handled by admin routes
+  }
+
   if (opts.allowPublicApi && (requestPath.startsWith("/v1/") || requestPath.startsWith("/v1c") || requestPath.startsWith("/v1m") || requestPath.startsWith("/api/"))) {
-    if (!opts.configuredKey) return { allow: false, status: 401, error: "GATEWAY_API_KEY 未配置", authRejected: true };
+    if (!opts.configuredKey) return { allow: false, status: 401, error: "GATEWAY_API_KEY \u672a\u914d\u7f6e", authRejected: true };
     var bearer = String(opts.authorization || "").match(/^Bearer\s+(.+)$/i);
     bearer = bearer ? bearer[1].trim() : "";
     var alternate = String(opts.headerKey || "").trim();
@@ -35,7 +43,7 @@ function decideRequestAccess(opts) {
     return {
       allow: false,
       status: 401,
-      error: "Gateway API Key 无效或缺失",
+      error: "Gateway API Key \u65e0\u6548\u6216\u7f3a\u5931",
       authRejected: true,
       authSource: bearer ? "bearer" : alternate ? "x-api-key" : "missing"
     };
