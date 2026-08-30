@@ -19,7 +19,9 @@ const {
 } = require("./time_utils");
 const { kelivoCompat } = require("./kelivo_compat");
 const { getInjectedMemoryPrompt, extractMemoryAsync } = require("./memory_system");
-const { registerChatRoutes, injectSystemPrompt, buildUpstreamBody } = require("./chat_routes");
+const { registerChatRoutes, injectSystemPrompt, buildUpstreamBody } = require("./chat_routes");const { hasTools, getToolDeclarations, handleToolCalls } = require("./tool_runner");
+require("./garden_tools").initGardenTools();
+
 
 const DEFAULT_BODY_LIMIT_MB = 50;
 
@@ -453,7 +455,9 @@ app.post("/v1/chat/completions", async (req, reply) => {
     }
 
     const requestedStream = body?.stream === true;
-    const upstreamBody = buildUpstreamBody(body, llmMessages);
+ const upstreamBody = buildUpstreamBody(body, llmMessages);
+if (hasTools()) { upstreamBody.tools = getToolDeclarations(); }
+
     const response = await fetch(TARGET_API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.TARGET_API_KEY}` },
