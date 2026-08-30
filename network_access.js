@@ -12,14 +12,17 @@ function isPrivateIp(value) {
 function isPublicStaticFile(requestPath) {
   return /^\/(style\.css|app\.js|favicon\.ico|manifest\.json|icon[^/]*\.png)$/.test(requestPath);
 }
-function isPublicApiRead(requestPath) {
-  return requestPath === "/api/home" || requestPath === "/api/diary" || requestPath === "/api/memory";
+function isPublicApiRead(requestPath, method) {
+  // 只放行只读的 GET；POST/PUT/DELETE 等写操作必须走下面的鉴权分支，
+  // 否则任何人都能公网覆盖 /api/home 的心情/叮嘱数据。
+  var isGet = String(method || "GET").toUpperCase() === "GET";
+  return isGet && (requestPath === "/api/home" || requestPath === "/api/diary" || requestPath === "/api/memory");
 }
 function decideRequestAccess(opts) {
   var requestPath = String(opts.path || "").split("?")[0];
   if (requestPath.startsWith("/admin") || requestPath === "/healthz" || requestPath === "/test-bark" || requestPath === "/chat" || requestPath === "/") return { allow: true };
   if (isPublicStaticFile(requestPath)) return { allow: true };
-  if (isPublicApiRead(requestPath)) return { allow: true };
+  if (isPublicApiRead(requestPath, opts.method)) return { allow: true };
   if (requestPath.startsWith("/internal/")) {
     return isLoopbackIp(opts.ip) ? { allow: true } : { allow: false, status: 403, error: "Forbidden" };
   }
