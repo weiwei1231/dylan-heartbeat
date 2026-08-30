@@ -18,7 +18,6 @@
 </div>
 <div id="main-view" class="view">
 <div class="content-area">
-<!-- 小窝（情侣空间） -->
 <div id="tab-home" class="tab-content active">
 <div class="home-header"><h2>小窝</h2><div class="settings-icon" id="home-settings-btn">⚙️</div></div>
 <div class="glass-card together-card">
@@ -46,7 +45,6 @@
 <div class="album-add" onclick="document.getElementById('album-upload').click()">+ 添加照片</div>
 </div>
 </div>
-<!-- 功能区（宫格入口） -->
 <div id="tab-features" class="tab-content">
 <div class="home-header"><h2>功能</h2></div>
 <div class="func-grid">
@@ -65,16 +63,18 @@
 <div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>小克</span><span></span></div>
 <div id="chat-messages" class="chat-messages"></div>
 <div class="chat-input-area">
+<button class="chat-plus-btn" onclick="toggleChatMenu()">+</button>
 <textarea id="chat-textarea" class="chat-textarea" rows="1" placeholder="和克聊天..."></textarea>
 <button id="chat-send-btn" class="chat-send-btn" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
 </div>
+<div class="chat-menu" id="chat-menu">
+<div class="chat-menu-item" onclick="chatMenuAction('photo')"><div class="chat-menu-icon">📷</div><div>图片</div></div>
+<div class="chat-menu-item" onclick="chatMenuAction('voice')"><div class="chat-menu-icon">🎤</div><div>语音</div></div>
+<div class="chat-menu-item" onclick="chatMenuAction('link')"><div class="chat-menu-icon">🔗</div><div>链接</div></div>
+<div class="chat-menu-item" onclick="chatMenuAction('clear')"><div class="chat-menu-icon">🗑️</div><div>清空</div></div>
 </div>
-<!-- 日记子页面 -->
-<div id="sub-diary" class="tab-content sub-page">
-<div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>小克的日记</span><span></span></div>
-<div id="diary-list" class="diary-list"><div class="diary-loading">加载中...</div></div>
 </div>
-<!-- 其他子页面占位 -->
+<div id="sub-diary" class="tab-content sub-page"><div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>小克的日记</span><span></span></div><div id="diary-list" class="diary-list"><div class="diary-loading">加载中...</div></div></div>
 <div id="sub-search" class="tab-content sub-page"><div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>搜索</span><span></span></div><div class="placeholder-view">开发中...</div></div>
 <div id="sub-weather" class="tab-content sub-page"><div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>天气</span><span></span></div><div class="placeholder-view">开发中...</div></div>
 <div id="sub-garden" class="tab-content sub-page"><div class="sub-header"><button class="back-btn" onclick="closeSubPage()">‹</button><span>花园</span><span></span></div><div class="placeholder-view">开发中...</div></div>
@@ -112,8 +112,7 @@
 </div>
 </div>
 </div>
-<!-- 底部3个tab -->
-<div class="tab-bar">
+<div class="tab-bar" id="tab-bar">
 <div class="tab-item active" data-tab="home"><span class="tab-icon">🏠</span><span>小窝</span></div>
 <div class="tab-item" data-tab="features"><span class="tab-icon">🧩</span><span>功能</span></div>
 <div class="tab-item" data-tab="settings"><span class="tab-icon">⚙️</span><span>设置</span></div>
@@ -123,6 +122,7 @@
 <input type="file" id="avatar-upload" accept="image/*" style="display:none">
 <input type="file" id="bg-upload" accept="image/*" style="display:none">
 <input type="file" id="album-upload" accept="image/*" style="display:none">
+<input type="file" id="chat-photo-upload" accept="image/*" style="display:none">
 <script src="/app.js"></script>
 </body>
 </html>
